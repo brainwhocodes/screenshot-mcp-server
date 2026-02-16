@@ -1,6 +1,11 @@
+bin/
+build/
+coverage.out
+dist/
+*.test
+*.out
 __pycache__/
 *.py[cod]
 *.egg-info/
-dist/
-build/
 venv/
+screenshot_mcp_server/
