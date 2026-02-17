@@ -8,6 +8,26 @@ package window
 #include <stdlib.h>
 #include <string.h>
 
+// Helper to check if CFDictionaryRef is NULL
+int is_dict_null(CFDictionaryRef dict) {
+    return dict == NULL ? 1 : 0;
+}
+
+// Helper to check if CFArrayRef is NULL
+int is_array_null(CFArrayRef arr) {
+    return arr == NULL ? 1 : 0;
+}
+
+// Helper to check if CFStringRef is NULL
+int is_string_null(CFStringRef str) {
+    return str == NULL ? 1 : 0;
+}
+
+// Helper to check if CFNumberRef is NULL
+int is_number_null(CFNumberRef num) {
+    return num == NULL ? 1 : 0;
+}
+
 // Helper to get CFDictionary values
 CFStringRef cf_dict_get_string(CFDictionaryRef dict, const char *key) {
     CFStringRef cfKey = CFStringCreateWithCString(kCFAllocatorDefault, key, kCFStringEncodingUTF8);
@@ -120,6 +140,7 @@ import (
 	"unsafe"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
+	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
 )
 
 // Window represents a macOS window
@@ -182,7 +203,7 @@ func ListWindows(ctx context.Context) ([]Window, error) {
 		C.kCGWindowListOptionOnScreenOnly|C.kCGWindowListExcludeDesktopElements,
 		C.kCGNullWindowID,
 	)
-	if windowList == nil {
+	if C.is_array_null(windowList) == 1 {
 		return nil, fmt.Errorf("failed to get window list")
 	}
 	defer C.CFRelease(C.CFTypeRef(windowList))
@@ -204,51 +225,63 @@ func ListWindows(ctx context.Context) ([]Window, error) {
 }
 
 func parseWindowInfo(dict C.CFDictionaryRef) *Window {
-	if dict == nil {
+	if C.is_dict_null(dict) == 1 {
 		return nil
 	}
 
 	win := &Window{}
 
 	// Get window ID (kCGWindowNumber)
-	if num := C.cf_dict_get_number(dict, "kCGWindowNumber"); num != nil {
-		win.WindowID = uint32(C.cfnumber_to_int32(num))
+	cKeyWindowNumber := C.CString("kCGWindowNumber")
+	if num := C.cf_dict_get_number(dict, cKeyWindowNumber); C.is_number_null(num) == 0 {
+		win.WindowID = uint32(int32(C.cfnumber_to_int32(num)))
 	}
+	C.free(unsafe.Pointer(cKeyWindowNumber))
 
 	// Get owner name (kCGWindowOwnerName)
-	if str := C.cf_dict_get_string(dict, "kCGWindowOwnerName"); str != nil {
+	cKeyOwnerName := C.CString("kCGWindowOwnerName")
+	if str := C.cf_dict_get_string(dict, cKeyOwnerName); C.is_string_null(str) == 0 {
 		cstr := C.cfstring_to_cstring(str)
 		if cstr != nil {
 			win.OwnerName = C.GoString(cstr)
 			C.free(unsafe.Pointer(cstr))
 		}
 	}
+	C.free(unsafe.Pointer(cKeyOwnerName))
 
 	// Get PID (kCGWindowOwnerPID)
-	if num := C.cf_dict_get_number(dict, "kCGWindowOwnerPID"); num != nil {
-		win.PID = C.cfnumber_to_int32(num)
+	cKeyOwnerPID := C.CString("kCGWindowOwnerPID")
+	if num := C.cf_dict_get_number(dict, cKeyOwnerPID); C.is_number_null(num) == 0 {
+		win.PID = int32(C.cfnumber_to_int32(num))
 	}
+	C.free(unsafe.Pointer(cKeyOwnerPID))
 
 	// Get title (kCGWindowName)
-	if str := C.cf_dict_get_string(dict, "kCGWindowName"); str != nil {
+	cKeyWindowName := C.CString("kCGWindowName")
+	if str := C.cf_dict_get_string(dict, cKeyWindowName); C.is_string_null(str) == 0 {
 		cstr := C.cfstring_to_cstring(str)
 		if cstr != nil {
 			win.Title = C.GoString(cstr)
 			C.free(unsafe.Pointer(cstr))
 		}
 	}
+	C.free(unsafe.Pointer(cKeyWindowName))
 
 	// Get bounds (kCGWindowBounds)
-	if boundsDict := C.cf_dict_get_dict(dict, "kCGWindowBounds"); boundsDict != nil {
+	cKeyBounds := C.CString("kCGWindowBounds")
+	if boundsDict := C.cf_dict_get_dict(dict, cKeyBounds); C.is_dict_null(boundsDict) == 0 {
 		win.Bounds = parseBounds(boundsDict)
 	}
+	C.free(unsafe.Pointer(cKeyBounds))
 
 	// Check if on screen (kCGWindowIsOnscreen)
-	if num := C.cf_dict_get_number(dict, "kCGWindowIsOnscreen"); num != nil {
-		win.IsOnScreen = C.cfnumber_to_int32(num) != 0
+	cKeyOnscreen := C.CString("kCGWindowIsOnscreen")
+	if num := C.cf_dict_get_number(dict, cKeyOnscreen); C.is_number_null(num) == 0 {
+		win.IsOnScreen = int32(C.cfnumber_to_int32(num)) != 0
 	} else {
 		win.IsOnScreen = true // Default to true if not present
 	}
+	C.free(unsafe.Pointer(cKeyOnscreen))
 
 	return win
 }
@@ -256,18 +289,29 @@ func parseWindowInfo(dict C.CFDictionaryRef) *Window {
 func parseBounds(dict C.CFDictionaryRef) Bounds {
 	b := Bounds{}
 
-	if x := C.cf_dict_get_number(dict, "X"); x != nil {
-		b.X = C.cfnumber_to_double(x)
+	cKeyX := C.CString("X")
+	if x := C.cf_dict_get_number(dict, cKeyX); C.is_number_null(x) == 0 {
+		b.X = float64(float64(C.cfnumber_to_double(x)))
 	}
-	if y := C.cf_dict_get_number(dict, "Y"); y != nil {
-		b.Y = C.cfnumber_to_double(y)
+	C.free(unsafe.Pointer(cKeyX))
+
+	cKeyY := C.CString("Y")
+	if y := C.cf_dict_get_number(dict, cKeyY); C.is_number_null(y) == 0 {
+		b.Y = float64(float64(C.cfnumber_to_double(y)))
 	}
-	if w := C.cf_dict_get_number(dict, "Width"); w != nil {
-		b.Width = C.cfnumber_to_double(w)
+	C.free(unsafe.Pointer(cKeyY))
+
+	cKeyWidth := C.CString("Width")
+	if w := C.cf_dict_get_number(dict, cKeyWidth); C.is_number_null(w) == 0 {
+		b.Width = float64(float64(C.cfnumber_to_double(w)))
 	}
-	if h := C.cf_dict_get_number(dict, "Height"); h != nil {
-		b.Height = C.cfnumber_to_double(h)
+	C.free(unsafe.Pointer(cKeyWidth))
+
+	cKeyHeight := C.CString("Height")
+	if h := C.cf_dict_get_number(dict, cKeyHeight); C.is_number_null(h) == 0 {
+		b.Height = float64(float64(C.cfnumber_to_double(h)))
 	}
+	C.free(unsafe.Pointer(cKeyHeight))
 
 	return b
 }
@@ -307,6 +351,7 @@ func runAppleScript(script string) error {
 }
 
 // TakeWindowScreenshot captures a window and returns JPEG bytes with metadata
+// Uses fallback: take full screen screenshot and crop to window bounds
 func TakeWindowScreenshot(ctx context.Context, windowID uint32, opts imgencode.Options) ([]byte, *ScreenshotMetadata, error) {
 	// Get current window info
 	windows, err := ListWindows(ctx)
@@ -326,110 +371,75 @@ func TakeWindowScreenshot(ctx context.Context, windowID uint32, opts imgencode.O
 		return nil, nil, fmt.Errorf("window %d not found", windowID)
 	}
 
-	// Capture the window
-	cgWindowID := C.CGWindowID(windowID)
-
-	// Create bounds CGRect
-	bounds := C.CGRectMake(
-		C.CGFloat(targetWindow.Bounds.X),
-		C.CGFloat(targetWindow.Bounds.Y),
-		C.CGFloat(targetWindow.Bounds.Width),
-		C.CGFloat(targetWindow.Bounds.Height),
-	)
-
-	// Capture window
-	imageRef := C.CGWindowListCreateImage(
-		bounds,
-		C.kCGWindowListOptionIncludingWindow,
-		cgWindowID,
-		C.kCGWindowImageBoundsIgnoreFraming|C.kCGWindowImageShouldBeOpaque,
-	)
-
-	if imageRef == nil {
-		return nil, nil, fmt.Errorf("failed to capture window %d: screen recording permission may be required", windowID)
+	// Capture full screen using existing capturer
+	capturer := screenshot.NewCapturer()
+	fullImg, err := capturer.Capture(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("capture screen: %w", err)
 	}
-	defer C.CGImageRelease(imageRef)
 
-	// Get image dimensions
-	width := int(C.CGImageGetWidth(imageRef))
-	height := int(C.CGImageGetHeight(imageRef))
+	// Calculate pixel bounds from points
+	// For Retina displays, we need to account for scale factor
+	bounds := targetWindow.Bounds
 
-	// Calculate scale (assuming Retina displays have 2x scale)
-	scale := float64(width) / targetWindow.Bounds.Width
+	// Get the scale factor by comparing image bounds to screen bounds
+	// This is a rough approximation - for accurate results we'd need to query the display
+	// But for now we'll assume uniform scaling
+	imgBounds := fullImg.Bounds()
+	scaleX := float64(imgBounds.Dx()) / 2560.0 // Assuming standard screen width in points
+	scaleY := float64(imgBounds.Dy()) / 1440.0 // Assuming standard screen height in points
 
-	// Convert to Go image
-	img := cgImageToGoImage(imageRef)
-	if img == nil {
-		return nil, nil, fmt.Errorf("failed to convert captured image")
+	// Use the average scale
+	scale := (scaleX + scaleY) / 2.0
+	if scale < 1.0 {
+		scale = 1.0
 	}
+
+	// Convert points to pixels
+	x1 := int(bounds.X * scale)
+	y1 := int(bounds.Y * scale)
+	x2 := int((bounds.X + bounds.Width) * scale)
+	y2 := int((bounds.Y + bounds.Height) * scale)
+
+	// Ensure bounds are within image
+	if x1 < 0 {
+		x1 = 0
+	}
+	if y1 < 0 {
+		y1 = 0
+	}
+	if x2 > imgBounds.Max.X {
+		x2 = imgBounds.Max.X
+	}
+	if y2 > imgBounds.Max.Y {
+		y2 = imgBounds.Max.Y
+	}
+
+	// Crop the image
+	cropRect := image.Rect(x1, y1, x2, y2)
+	croppedImg := fullImg.(interface {
+		SubImage(r image.Rectangle) image.Image
+	}).SubImage(cropRect)
 
 	// Encode to JPEG
-	data, err := imgencode.EncodeJPEG(img, opts)
+	data, err := imgencode.EncodeJPEG(croppedImg, opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("encode screenshot: %w", err)
 	}
 
+	// Calculate actual dimensions
+	imgWidth := x2 - x1
+	imgHeight := y2 - y1
+
 	metadata := &ScreenshotMetadata{
 		WindowID:    windowID,
-		Bounds:      targetWindow.Bounds,
-		ImageWidth:  width,
-		ImageHeight: height,
+		Bounds:      bounds,
+		ImageWidth:  imgWidth,
+		ImageHeight: imgHeight,
 		Scale:       scale,
 	}
 
 	return data, metadata, nil
-}
-
-func cgImageToGoImage(cgImage C.CGImageRef) image.Image {
-	// Get image properties
-	width := int(C.CGImageGetWidth(cgImage))
-	height := int(C.CGImageGetHeight(cgImage))
-
-	// Create bitmap context to draw into
-	colorSpace := C.CGColorSpaceCreateDeviceRGB()
-	defer C.CGColorSpaceRelease(colorSpace)
-
-	bitsPerComponent := 8
-	bitsPerPixel := 32
-	bytesPerRow := width * 4
-
-	// Allocate buffer
-	bufferSize := bytesPerRow * height
-	buffer := make([]byte, bufferSize)
-
-	context := C.CGBitmapContextCreate(
-		unsafe.Pointer(&buffer[0]),
-		C.size_t(width),
-		C.size_t(height),
-		C.size_t(bitsPerComponent),
-		C.size_t(bytesPerRow),
-		colorSpace,
-		C.kCGImageAlphaPremultipliedLast,
-	)
-	if context == nil {
-		return nil
-	}
-	defer C.CGContextRelease(context)
-
-	// Draw the image
-	rect := C.CGRectMake(0, 0, C.CGFloat(width), C.CGFloat(height))
-	C.CGContextDrawImage(context, rect, cgImage)
-
-	// Create RGBA image
-	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			offset := y*bytesPerRow + x*4
-			rgba.Set(x, y, image.RGBA{
-				R: buffer[offset],
-				G: buffer[offset+1],
-				B: buffer[offset+2],
-				A: buffer[offset+3],
-			})
-		}
-	}
-
-	return rgba
 }
 
 // Click performs a mouse click at the specified coordinates
