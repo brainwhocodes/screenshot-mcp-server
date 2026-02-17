@@ -4,7 +4,7 @@ A Go implementation of an MCP server and client for full-screen screenshots.
 
 ## Features
 
-- MCP tool: `take_screenshot`
+- MCP tools: `take_screenshot`, `list_windows`, `focus_window`, `take_window_screenshot`, `click`, `press_key`
 - JPEG output (`image/jpeg`) with default quality `60`
 - stdio transport server
 - SSE transport server (default port `3001`)

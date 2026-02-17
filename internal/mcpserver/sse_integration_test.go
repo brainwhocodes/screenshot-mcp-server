@@ -30,6 +30,14 @@ func TestServerIntegration_SSE(t *testing.T) {
 	}
 	defer session.Close()
 
+	toolsResult, err := session.ListTools(ctx, &sdkmcp.ListToolsParams{})
+	if err != nil {
+		t.Fatalf("list tools over sse: %v", err)
+	}
+	if !containsTool(toolsResult.Tools, PressKeyToolName) {
+		t.Fatalf("expected tool %q in list", PressKeyToolName)
+	}
+
 	callResult, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: ToolName})
 	if err != nil {
 		t.Fatalf("call tool over sse: %v", err)

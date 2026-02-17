@@ -42,6 +42,9 @@ func TestServerIntegration_InMemory(t *testing.T) {
 	if !containsTool(toolsResult.Tools, ToolName) {
 		t.Fatalf("expected tool %q in list", ToolName)
 	}
+	if !containsTool(toolsResult.Tools, PressKeyToolName) {
+		t.Fatalf("expected tool %q in list", PressKeyToolName)
+	}
 
 	callResult, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: ToolName})
 	if err != nil {
