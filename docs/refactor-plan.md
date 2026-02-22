@@ -177,7 +177,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Pass `InputService` into `mcpserver.NewServer` (it’s created internally today), so tests can stub input without OS permissions.
 - [ ] Introduce interfaces for “window ops” and “screenshot capture” used by MCP tools (so unit tests can be hermetic).
-- [ ] Add targeted unit tests for coordinate mapping (points↔pixels) and clamping that don’t require real windows.
+- [x] Add targeted unit tests for coordinate mapping (points↔pixels) and clamping that don’t require real windows.
 
 ### Tool responses + errors
 
