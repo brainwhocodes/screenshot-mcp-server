@@ -2,7 +2,9 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"image"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
@@ -15,6 +17,7 @@ type WindowService interface {
 	ListWindows(context.Context) ([]window.Window, error)
 	FocusWindow(context.Context, uint32) error
 	TakeWindowScreenshot(context.Context, uint32, imgencode.Options) ([]byte, *window.ScreenshotMetadata, error)
+	TakeWindowScreenshotImage(context.Context, uint32) (image.Image, *window.ScreenshotMetadata, error)
 	TakeWindowScreenshotPNG(context.Context, uint32) ([]byte, *window.ScreenshotMetadata, error)
 	TakeRegionScreenshot(context.Context, float64, float64, float64, float64, string, imgencode.Options) ([]byte, *window.RegionMetadata, error)
 	TakeRegionScreenshotPNG(context.Context, float64, float64, float64, float64, string) ([]byte, *window.RegionMetadata, error)
@@ -66,6 +69,14 @@ func (defaultWindowService) TakeWindowScreenshot(ctx context.Context, windowID u
 		return nil, nil, wrapWindowServiceError("take window screenshot", err)
 	}
 	return data, metadata, nil
+}
+
+func (defaultWindowService) TakeWindowScreenshotImage(ctx context.Context, windowID uint32) (image.Image, *window.ScreenshotMetadata, error) {
+	screenshot, metadata, err := window.TakeWindowScreenshotImage(ctx, windowID)
+	if err != nil {
+		return nil, nil, wrapWindowServiceError("take window screenshot", err)
+	}
+	return screenshot, metadata, nil
 }
 
 func (defaultWindowService) TakeWindowScreenshotPNG(ctx context.Context, windowID uint32) ([]byte, *window.ScreenshotMetadata, error) {
@@ -177,6 +188,13 @@ func (defaultWindowService) KillProcess(ctx context.Context, processName string)
 }
 
 func wrapWindowServiceError(operation string, err error) error {
+	// Keep request lifecycle and placeholder errors visible to callers.
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
 	return fmt.Errorf("%s: %w", operation, err)
 }
 

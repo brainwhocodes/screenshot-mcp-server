@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-const defaultCommandTimeout = 10 * time.Second
+const (
+	defaultCommandTimeout     = 10 * time.Second
+	defaultAppleScriptTimeout = 5 * time.Second
+)
 
 var errNilContext = errors.New("context is required")
 
@@ -22,6 +25,16 @@ func RunCommand(ctx context.Context, command string, args ...string) ([]byte, er
 
 // RunCommandWithInput executes a command with stdin input and a bounded context.
 func RunCommandWithInput(ctx context.Context, input []byte, command string, args ...string) ([]byte, error) {
+	return RunCommandWithInputAndTimeout(ctx, input, defaultCommandTimeout, command, args...)
+}
+
+// RunCommandWithTimeout executes a command with an explicit context timeout and returns stdout/stderr.
+func RunCommandWithTimeout(ctx context.Context, timeout time.Duration, command string, args ...string) ([]byte, error) {
+	return RunCommandWithInputAndTimeout(ctx, nil, timeout, command, args...)
+}
+
+// RunCommandWithInputAndTimeout executes a command with stdin input and an explicit timeout.
+func RunCommandWithInputAndTimeout(ctx context.Context, input []byte, timeout time.Duration, command string, args ...string) ([]byte, error) {
 	if err := ValidateCommandArg(command); err != nil {
 		return nil, fmt.Errorf("invalid command %q: %w", command, err)
 	}
@@ -31,7 +44,7 @@ func RunCommandWithInput(ctx context.Context, input []byte, command string, args
 		}
 	}
 
-	ctxWithTimeout, cancel, err := contextWithTimeout(ctx)
+	ctxWithTimeout, cancel, err := contextWithTimeout(ctx, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +57,7 @@ func RunCommandWithInput(ctx context.Context, input []byte, command string, args
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return output, fmt.Errorf("command %q failed: %w", command, err)
+		return output, wrapCommandError(command, err)
 	}
 	return output, nil
 }
@@ -75,11 +88,21 @@ func CommandContext(ctx context.Context, command string, args ...string) (*exec.
 		return nil, func() {}, fmt.Errorf("invalid command invocation: %w", err)
 	}
 
-	ctxWithTimeout, cancel, err := contextWithTimeout(ctx)
+	ctxWithTimeout, cancel, err := contextWithTimeout(ctx, defaultCommandTimeout)
 	if err != nil {
 		return nil, func() {}, err
 	}
 	return exec.CommandContext(ctxWithTimeout, command, args...), cancel, nil
+}
+
+func wrapCommandError(command string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return fmt.Errorf("command %q failed: %w", command, err)
 }
 
 // ValidateCommandArg provides a narrow validation for shell-like command injection vectors.
@@ -93,16 +116,21 @@ func ValidateCommandArg(arg string) error {
 	return nil
 }
 
-func contextWithTimeout(ctx context.Context) (context.Context, context.CancelFunc, error) {
+func contextWithTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc, error) {
 	if ctx == nil {
 		return nil, func() {}, errNilContext
 	}
-
-	if _, ok := ctx.Deadline(); ok {
-		return ctx, func() {}, nil
+	if timeout <= 0 {
+		timeout = defaultCommandTimeout
 	}
 
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, defaultCommandTimeout)
+	if deadline, ok := ctx.Deadline(); ok {
+		if remaining := time.Until(deadline); remaining <= timeout {
+			return ctx, func() {}, nil
+		}
+	}
+
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, timeout)
 	return ctxWithTimeout, cancel, nil
 }
 
@@ -117,7 +145,7 @@ func RunAppleScript(ctx context.Context, script string) error {
 	if script == "" {
 		return fmt.Errorf("script is required")
 	}
-	output, err := RunCommand(ctx, "osascript", "-e", script)
+	output, err := RunCommandWithTimeout(ctx, defaultAppleScriptTimeout, "osascript", "-e", script)
 	if err != nil {
 		return fmt.Errorf("apple script failed: %w, output: %s", err, string(output))
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
 )
@@ -83,6 +84,11 @@ func FocusWindow(ctx context.Context, _ uint32) error {
 
 // TakeWindowScreenshot returns an unsupported error on non-Darwin.
 func TakeWindowScreenshot(context.Context, uint32, imgencode.Options) ([]byte, *ScreenshotMetadata, error) {
+	return nil, nil, errors.New(unsupportedWindowToolsMessage)
+}
+
+// TakeWindowScreenshotImage returns an unsupported error on non-Darwin.
+func TakeWindowScreenshotImage(context.Context, uint32) (image.Image, *ScreenshotMetadata, error) {
 	return nil, nil, errors.New(unsupportedWindowToolsMessage)
 }
 

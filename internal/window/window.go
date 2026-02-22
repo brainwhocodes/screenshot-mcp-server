@@ -263,6 +263,7 @@ import (
 	"context"
 	"fmt"
 	"image"
+	"math"
 	"unsafe"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
@@ -492,7 +493,26 @@ func TakeWindowScreenshot(ctx context.Context, windowID uint32, opts imgencode.O
 	return captureWindowImage(ctx, windowID, encode)
 }
 
+// TakeWindowScreenshotImage captures a window and returns the raw cropped image with metadata.
+func TakeWindowScreenshotImage(ctx context.Context, windowID uint32) (image.Image, *ScreenshotMetadata, error) {
+	return captureWindowImageRaw(ctx, windowID)
+}
+
 func captureWindowImage(ctx context.Context, windowID uint32, encode func(image.Image) ([]byte, error)) ([]byte, *ScreenshotMetadata, error) {
+	croppedImg, metadata, err := captureWindowImageRaw(ctx, windowID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	data, err := encode(croppedImg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode screenshot: %w", err)
+	}
+
+	return data, metadata, nil
+}
+
+func captureWindowImageRaw(ctx context.Context, windowID uint32) (image.Image, *ScreenshotMetadata, error) {
 	targetWindow, err := findWindowByID(ctx, windowID)
 	if err != nil {
 		return nil, nil, err
@@ -508,12 +528,7 @@ func captureWindowImage(ctx context.Context, windowID uint32, encode func(image.
 	cropRect := cropRectForWindow(targetWindow.Bounds, fullImg.Bounds(), scale)
 	croppedImg := cropImage(fullImg, cropRect)
 
-	data, err := encode(croppedImg)
-	if err != nil {
-		return nil, nil, fmt.Errorf("encode screenshot: %w", err)
-	}
-
-	return data, &ScreenshotMetadata{
+	return croppedImg, &ScreenshotMetadata{
 		WindowID:    windowID,
 		Bounds:      targetWindow.Bounds,
 		ImageWidth:  cropRect.Dx(),
@@ -655,14 +670,19 @@ func captureRegionScreenshot(ctx context.Context, x, y, width, height float64, c
 }
 
 func cropRectForRegion(imgBounds image.Rectangle, x, y, width, height, scale float64, coordSpace string) image.Rectangle {
-	var x1, y1, x2, y2 int
+	var x1f, y1f, x2f, y2f float64
 	if coordSpace == "pixels" {
-		x1, y1, x2, y2 = int(x), int(y), int(x+width), int(y+height)
+		x1f, y1f, x2f, y2f = x, y, x+width, y+height
 	} else {
-		x1, y1, x2, y2 = int(x*scale), int(y*scale), int((x+width)*scale), int((y+height)*scale)
+		x1f, y1f, x2f, y2f = x*scale, y*scale, (x+width)*scale, (y+height)*scale
 	}
 
-	return clampRect(image.Rect(x1, y1, x2, y2), imgBounds)
+	return clampRect(image.Rect(
+		floatToIntBounded(x1f),
+		floatToIntBounded(y1f),
+		floatToIntBounded(x2f),
+		floatToIntBounded(y2f),
+	), imgBounds)
 }
 
 func getScaleForWindow(bounds Bounds) float64 {
@@ -672,11 +692,27 @@ func getScaleForWindow(bounds Bounds) float64 {
 }
 
 func cropRectForWindow(bounds Bounds, imgBounds image.Rectangle, scale float64) image.Rectangle {
-	x1 := int(bounds.X * scale)
-	y1 := int(bounds.Y * scale)
-	x2 := int((bounds.X + bounds.Width) * scale)
-	y2 := int((bounds.Y + bounds.Height) * scale)
+	x1 := floatToIntBounded(bounds.X * scale)
+	y1 := floatToIntBounded(bounds.Y * scale)
+	x2 := floatToIntBounded((bounds.X + bounds.Width) * scale)
+	y2 := floatToIntBounded((bounds.Y + bounds.Height) * scale)
 	return clampRect(image.Rect(x1, y1, x2, y2), imgBounds)
+}
+
+func floatToIntBounded(value float64) int {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0
+	}
+
+	maxInt := float64(int(^uint(0) >> 1))
+	minInt := float64(-int(^uint(0)>>1) - 1)
+	if value > maxInt {
+		return int(^uint(0) >> 1)
+	}
+	if value < minInt {
+		return -int(^uint(0)>>1) - 1
+	}
+	return int(value)
 }
 
 func clampRect(rect, bounds image.Rectangle) image.Rectangle {

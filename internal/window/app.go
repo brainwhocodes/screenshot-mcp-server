@@ -11,6 +11,8 @@ import (
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
 )
 
+const processCommandTimeout = 5 * time.Second
+
 // LaunchApp launches an application by name or path.
 // appName can be the app name (e.g., "Safari") or path to the app bundle.
 func LaunchApp(ctx context.Context, appName string) error {
@@ -85,7 +87,7 @@ func KillProcess(ctx context.Context, processName string) error {
 		return fmt.Errorf("invalid process name %q: %w", processName, err)
 	}
 
-	output, err := safeexec.RunCommand(ctx, "pkill", "-x", processName)
+	output, err := safeexec.RunCommandWithTimeout(ctx, processCommandTimeout, "pkill", "-x", processName)
 	if err != nil {
 		return fmt.Errorf("kill process %q: %w, output: %s", processName, err, string(output))
 	}
@@ -94,6 +96,6 @@ func KillProcess(ctx context.Context, processName string) error {
 }
 
 func isProcessRunning(ctx context.Context, processName string) bool {
-	_, err := safeexec.RunCommand(ctx, "pgrep", "-x", processName)
+	_, err := safeexec.RunCommandWithTimeout(ctx, processCommandTimeout, "pgrep", "-x", processName)
 	return err == nil
 }

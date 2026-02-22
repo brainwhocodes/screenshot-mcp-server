@@ -16,7 +16,10 @@ type takeScreenshotPNGArgs struct{}
 type listWindowsArgs struct{}
 
 type screenshotHashArgs struct {
-	Algorithm string `json:"algorithm,omitempty"`
+	Algorithm     string `json:"algorithm,omitempty"`
+	Target        string `json:"target,omitempty"`
+	WindowID      uint32 `json:"window_id,omitempty"`
+	IncludeCursor bool   `json:"include_cursor,omitempty"`
 }
 
 type focusWindowArgs struct {

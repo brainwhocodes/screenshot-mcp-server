@@ -1,7 +1,6 @@
 package mcpserver
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"image"
@@ -9,7 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
 	screencap "github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
 )
@@ -46,7 +44,8 @@ func findImageMatches(ctx context.Context, windowID uint32, templatePath string,
 		return nil, fmt.Errorf("template path not allowed: %w", err)
 	}
 
-	// #nosec G304 -- templatePath is validated by path allowlist before open.
+	// Accepted G304 suppression: templatePath is validated by path allowlist first.
+	// #nosec G304
 	templateFile, err := os.Open(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("open template image: %w", err)
@@ -68,13 +67,9 @@ func findImageMatches(ctx context.Context, windowID uint32, templatePath string,
 		}
 		sourceImage = src
 	default:
-		screenshotData, _, err := window.TakeWindowScreenshot(ctx, windowID, imgencode.DefaultOptions)
+		sourceImage, _, err = window.TakeWindowScreenshotImage(ctx, windowID)
 		if err != nil {
 			return nil, fmt.Errorf("capture window screenshot: %w", err)
-		}
-		sourceImage, err = decodeJPEGImage(screenshotData)
-		if err != nil {
-			return nil, fmt.Errorf("decode window screenshot: %w", err)
 		}
 	}
 
@@ -166,12 +161,4 @@ func computeNCC(img image.Image, startX, startY, width, height int, templateGray
 	}
 
 	return numerator / (regionStdDev * templateStdDev)
-}
-
-func decodeJPEGImage(data []byte) (image.Image, error) {
-	img, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("decode image: %w", err)
-	}
-	return img, nil
 }

@@ -206,3 +206,25 @@ func TestSafeFloatToInt(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeScreenshotHashTarget(t *testing.T) {
+	target, err := normalizeScreenshotHashTarget("screen")
+	if err != nil {
+		t.Fatalf("normalizeScreenshotHashTarget(%q) unexpected err: %v", "screen", err)
+	}
+	if target != "screen" {
+		t.Fatalf("normalizeScreenshotHashTarget(%q) = %q, want %q", "screen", target, "screen")
+	}
+
+	target, err = normalizeScreenshotHashTarget("window")
+	if err != nil {
+		t.Fatalf("normalizeScreenshotHashTarget(%q) unexpected err: %v", "window", err)
+	}
+	if target != "window" {
+		t.Fatalf("normalizeScreenshotHashTarget(%q) = %q, want %q", "window", target, "window")
+	}
+
+	if _, err := normalizeScreenshotHashTarget("desk"); err == nil {
+		t.Fatal("expected error for unsupported target")
+	}
+}

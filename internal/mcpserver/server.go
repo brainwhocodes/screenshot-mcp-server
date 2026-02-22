@@ -202,6 +202,7 @@ func NewServer(service ScreenshotService, cfg Config) *sdkmcp.Server {
 	if cfg.Version == "" {
 		cfg.Version = version.Version
 	}
+	recordingState := newRecordingState()
 
 	server := sdkmcp.NewServer(
 		&sdkmcp.Implementation{
@@ -219,7 +220,7 @@ func NewServer(service ScreenshotService, cfg Config) *sdkmcp.Server {
 		registerSystemTools(server, windowService)
 		registerImageUtilities(server, windowService)
 		if cfg.ExperimentalTools {
-			registerExperimentalTools(server, windowService)
+			registerExperimentalTools(server, windowService, recordingState)
 		}
 	}
 

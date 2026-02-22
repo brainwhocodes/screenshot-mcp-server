@@ -144,7 +144,8 @@ func readFixtureImage(fixturePath string) ([]byte, error) {
 	if cleanPath == "" {
 		return nil, fmt.Errorf("fixture path is empty")
 	}
-	// #nosec G304 -- fixture path is intentionally configurable for local deterministic tests.
+	// Accepted G304 suppression: fixture path is intentionally configurable for deterministic tests.
+	// #nosec G304
 	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("read fixture image: %w", err)
