@@ -10,29 +10,12 @@ import (
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
 )
 
-// FeatureUnavailableError marks a tool as implemented as a placeholder.
-type FeatureUnavailableError struct {
-	Tool   string
-	Reason string
-}
-
-func (e FeatureUnavailableError) Error() string {
-	return fmt.Sprintf("%s is currently unavailable: %s", e.Tool, e.Reason)
-}
-
-func (e FeatureUnavailableError) Unwrap() error {
-	return errFeatureUnavailable
-}
-
 var (
 	errFeatureUnavailable = errors.New("feature unavailable")
 )
 
 func newFeatureUnavailable(tool, reason string) error {
-	return FeatureUnavailableError{
-		Tool:   tool,
-		Reason: reason,
-	}
+	return newToolError(tool, toolErrorCodeFeatureUnavailable, reason, errFeatureUnavailable)
 }
 
 // setClipboard sets the macOS clipboard content using pbcopy.
@@ -122,8 +105,6 @@ func newRecordingState() *recordingState {
 	}
 }
 
-var recordingStateStore = newRecordingState()
-
 func (state *recordingState) start(ctx context.Context, fps int, format string) (string, error) {
 	if err := ctx.Err(); err != nil {
 		return "", fmt.Errorf("start recording: %w", err)
@@ -157,8 +138,8 @@ func (state *recordingState) stop(recordingID string) (bool, error) {
 
 // startRecording starts recording the screen.
 // Placeholder implementation: full recording needs AVFoundation integration.
-func startRecording(ctx context.Context, _ uint32, fps int, format string) (string, error) {
-	recordingID, err := recordingStateStore.start(ctx, fps, format)
+func startRecording(ctx context.Context, state *recordingState, _ uint32, fps int, format string) (string, error) {
+	recordingID, err := state.start(ctx, fps, format)
 	if err != nil {
 		return "", err
 	}
@@ -166,8 +147,8 @@ func startRecording(ctx context.Context, _ uint32, fps int, format string) (stri
 }
 
 // stopRecording stops a screen recording.
-func stopRecording(_ context.Context, recordingID string) error {
-	if _, err := recordingStateStore.stop(recordingID); err != nil {
+func stopRecording(_ context.Context, state *recordingState, recordingID string) error {
+	if _, err := state.stop(recordingID); err != nil {
 		return err
 	}
 	return newFeatureUnavailable(StopRecordingToolName, "AVFoundation integration not implemented")

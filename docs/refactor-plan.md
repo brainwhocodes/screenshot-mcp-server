@@ -17,7 +17,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [ ] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
 - [ ] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
 - [x] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
-- [ ] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
+- [x] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
 - [x] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
 - [x] Add explicit timeouts for OS calls (`osascript`, process management) to avoid hangs during long test runs.
 - [x] Avoid encode→decode loops in polling tools (pixel/region waiters) via raw image sampling path.
@@ -207,7 +207,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Add `tools.ToolResultFromJSON(any)` helper and use it across tools to reduce repeated `json.Marshal` boilerplate.
 - [x] Standardize outputs: JSON always in `TextContent`; images always in `ImageContent` with explicit MIME types.
-- [ ] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
+- [x] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
 
 ### Concurrency + state
 

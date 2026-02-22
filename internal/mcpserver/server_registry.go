@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"image"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -62,11 +63,11 @@ func registerImageUtilities(server *sdkmcp.Server, windowService WindowService) 
 	registerAssertScreenshotMatchesFixtureTool(server, windowService)
 }
 
-func registerExperimentalTools(server *sdkmcp.Server, windowService WindowService) {
+func registerExperimentalTools(server *sdkmcp.Server, windowService WindowService, recordingState *recordingState) {
 	registerWaitForTextTool(server, windowService)
 	registerRestartAppTool(server, windowService)
-	registerStartRecordingTool(server, windowService)
-	registerStopRecordingTool(server, windowService)
+	registerStartRecordingTool(server, windowService, recordingState)
+	registerStopRecordingTool(server, windowService, recordingState)
 	registerTakeScreenshotWithCursorTool(server, windowService)
 }
 
@@ -139,10 +140,35 @@ func registerScreenshotHashTool(server *sdkmcp.Server, service ScreenshotService
 		if args.Algorithm == "" {
 			args.Algorithm = "perceptual"
 		}
+		if args.Target == "" {
+			args.Target = "screen"
+		}
+		if args.IncludeCursor {
+			return nil, nil, fmt.Errorf("include_cursor option is not supported yet")
+		}
 
-		img, err := service.CaptureImage(ctx)
+		target, err := normalizeScreenshotHashTarget(args.Target)
 		if err != nil {
-			return nil, nil, fmt.Errorf("capture screenshot: %w", err)
+			return nil, nil, err
+		}
+
+		var img image.Image
+		switch target {
+		case "window":
+			if err := validateWindowID(args.WindowID); err != nil {
+				return nil, nil, err
+			}
+			windowImg, _, err := windowService.TakeWindowScreenshotImage(ctx, args.WindowID)
+			if err != nil {
+				return nil, nil, fmt.Errorf("capture window screenshot: %w", err)
+			}
+			img = windowImg
+		default:
+			fullImage, err := service.CaptureImage(ctx)
+			if err != nil {
+				return nil, nil, fmt.Errorf("capture screenshot: %w", err)
+			}
+			img = fullImage
 		}
 
 		hash, err := computeImageHash(img, args.Algorithm)
@@ -153,12 +179,23 @@ func registerScreenshotHashTool(server *sdkmcp.Server, service ScreenshotService
 		result, err := tools.ToolResultFromJSON(map[string]interface{}{
 			"hash":      hash,
 			"algorithm": args.Algorithm,
+			"target":    target,
+			"window_id": args.WindowID,
 		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal hash: %w", err)
 		}
 		return result, nil, nil
 	})
+}
+
+func normalizeScreenshotHashTarget(target string) (string, error) {
+	switch target {
+	case "screen", "window":
+		return target, nil
+	default:
+		return "", fmt.Errorf("hash target must be 'screen' or 'window', got %q", target)
+	}
 }
 
 func registerFocusWindowTool(server *sdkmcp.Server, windowService WindowService) {
@@ -749,7 +786,7 @@ func registerRestartAppTool(server *sdkmcp.Server, windowService WindowService) 
 	})
 }
 
-func registerStartRecordingTool(server *sdkmcp.Server, windowService WindowService) {
+func registerStartRecordingTool(server *sdkmcp.Server, windowService WindowService, recordingState *recordingState) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        StartRecordingToolName,
 		Description: StartRecordingToolDescription,
@@ -763,7 +800,7 @@ func registerStartRecordingTool(server *sdkmcp.Server, windowService WindowServi
 		if args.Format == "" {
 			args.Format = "mp4"
 		}
-		recordingID, err := startRecording(ctx, args.WindowID, args.FPS, args.Format)
+		recordingID, err := startRecording(ctx, recordingState, args.WindowID, args.FPS, args.Format)
 		if err != nil {
 			return nil, nil, fmt.Errorf("start recording: %w", err)
 		}
@@ -778,7 +815,7 @@ func registerStartRecordingTool(server *sdkmcp.Server, windowService WindowServi
 	})
 }
 
-func registerStopRecordingTool(server *sdkmcp.Server, windowService WindowService) {
+func registerStopRecordingTool(server *sdkmcp.Server, windowService WindowService, recordingState *recordingState) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        StopRecordingToolName,
 		Description: StopRecordingToolDescription,
@@ -789,7 +826,7 @@ func registerStopRecordingTool(server *sdkmcp.Server, windowService WindowServic
 		if args.RecordingID == "" {
 			return nil, nil, fmt.Errorf("recording_id is required")
 		}
-		if err := stopRecording(ctx, args.RecordingID); err != nil {
+		if err := stopRecording(ctx, recordingState, args.RecordingID); err != nil {
 			return nil, nil, fmt.Errorf("stop recording: %w", err)
 		}
 		videoPath := ""
@@ -854,7 +891,7 @@ func focusWindowAndHandleError(ctx context.Context, windowService WindowService,
 
 func ensureWindowPermissions(windowService WindowService, toolName string) error {
 	if err := windowService.EnsureAutomationPermissions(toolName); err != nil {
-		return fmt.Errorf("%s: %w", toolName, err)
+		return asToolExecutionError(toolName, err)
 	}
 	return nil
 }
