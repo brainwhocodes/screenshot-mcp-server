@@ -28,7 +28,9 @@ func TestServerIntegration_SSE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("connect over sse: %v", err)
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	toolsResult, err := session.ListTools(ctx, &sdkmcp.ListToolsParams{})
 	if err != nil {

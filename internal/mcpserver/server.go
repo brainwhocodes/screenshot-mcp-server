@@ -1,8 +1,8 @@
+// Package mcpserver exposes MCP server wiring and tool registration for screenshot automation.
 package mcpserver
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,17 +10,22 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/version"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
 )
 
+// Tool names and descriptions are exported for tests and integrations.
 const (
 	// ToolName is the public MCP tool name for screenshot capture.
 	ToolName = "take_screenshot"
 	// ToolDescription explains tool behavior to MCP clients.
 	ToolDescription = "Take a screenshot of the user's screen and return it as an image"
+
+	// TakeScreenshotPNGToolName captures full screen as PNG
+	TakeScreenshotPNGToolName = "take_screenshot_png"
+	// TakeScreenshotPNGToolDescription describes the full-screen PNG capture tool.
+	TakeScreenshotPNGToolDescription = "Take a lossless PNG screenshot of the user's screen"
 
 	// ListWindowsToolName lists all visible windows
 	ListWindowsToolName        = "list_windows"
@@ -42,14 +47,132 @@ const (
 	PressKeyToolName        = "press_key"
 	PressKeyToolDescription = "Send a key press to the focused application window"
 
+	// TypeTextToolName types text into the active application
+	TypeTextToolName        = "type_text"
+	TypeTextToolDescription = "Type text into the focused application window"
+
+	// TakeRegionScreenshotToolName captures a region of the screen
+	TakeRegionScreenshotToolName        = "take_region_screenshot"
+	TakeRegionScreenshotToolDescription = "Take a screenshot of a specific region of the screen"
+
+	// TakeWindowScreenshotPNGToolName captures a window as PNG (lossless)
+	TakeWindowScreenshotPNGToolName        = "take_window_screenshot_png"
+	TakeWindowScreenshotPNGToolDescription = "Take a lossless PNG screenshot of a specific window"
+
+	// TakeRegionScreenshotPNGToolName captures a region as PNG (lossless)
+	TakeRegionScreenshotPNGToolName        = "take_region_screenshot_png"
+	TakeRegionScreenshotPNGToolDescription = "Take a lossless PNG screenshot of a specific region of the screen"
+
+	// MouseMoveToolName moves the mouse cursor
+	MouseMoveToolName        = "mouse_move"
+	MouseMoveToolDescription = "Move the mouse cursor to specific coordinates within a window"
+
+	// MouseDownToolName sends mouse down event
+	MouseDownToolName        = "mouse_down"
+	MouseDownToolDescription = "Send a mouse down event at specific coordinates within a window"
+
+	// MouseUpToolName sends mouse up event
+	MouseUpToolName        = "mouse_up"
+	MouseUpToolDescription = "Send a mouse up event at specific coordinates within a window"
+
+	// DragToolName performs drag operation
+	DragToolName        = "drag"
+	DragToolDescription = "Perform a drag operation from one point to another within a window"
+
+	// ScrollToolName performs scroll operation
+	ScrollToolName        = "scroll"
+	ScrollToolDescription = "Perform a scroll operation at specific coordinates within a window"
+
+	// KeyDownToolName sends key down event
+	KeyDownToolName        = "key_down"
+	KeyDownToolDescription = "Send a key down event (for hold actions)"
+
+	// KeyUpToolName sends key up event
+	KeyUpToolName        = "key_up"
+	KeyUpToolDescription = "Send a key up event (for hold actions)"
+
+	// WaitForPixelToolName waits for a pixel to match a color
+	WaitForPixelToolName        = "wait_for_pixel"
+	WaitForPixelToolDescription = "Wait until a pixel at specific coordinates matches an expected color"
+
+	// WaitForRegionStableToolName waits for a region to stop changing
+	WaitForRegionStableToolName        = "wait_for_region_stable"
+	WaitForRegionStableToolDescription = "Wait until a region of the window stops changing"
+
+	// LaunchAppToolName launches an application
+	LaunchAppToolName        = "launch_app"
+	LaunchAppToolDescription = "Launch an application by name or path"
+
+	// QuitAppToolName quits an application
+	QuitAppToolName        = "quit_app"
+	QuitAppToolDescription = "Quit an application by name"
+
+	// WaitForProcessToolName waits for a process
+	WaitForProcessToolName        = "wait_for_process"
+	WaitForProcessToolDescription = "Wait for a process with the given name to appear"
+
+	// KillProcessToolName kills a process
+	KillProcessToolName        = "kill_process"
+	KillProcessToolDescription = "Kill a process by name"
+
+	// ScreenshotHashToolName generates a hash of the screen content
+	ScreenshotHashToolName        = "screenshot_hash"
+	ScreenshotHashToolDescription = "Generate a stable hash of the current screen for change detection"
+
+	// SetClipboardToolName sets clipboard content
+	SetClipboardToolName        = "set_clipboard"
+	SetClipboardToolDescription = "Set the clipboard to a text value"
+
+	// GetClipboardToolName gets clipboard content
+	GetClipboardToolName        = "get_clipboard"
+	GetClipboardToolDescription = "Get the current clipboard text content"
+
+	// WaitForImageMatchToolName waits for a template image to appear
+	WaitForImageMatchToolName        = "wait_for_image_match"
+	WaitForImageMatchToolDescription = "Wait until a template image appears on screen"
+
+	// FindImageMatchesToolName finds all matches of a template
+	FindImageMatchesToolName        = "find_image_matches"
+	FindImageMatchesToolDescription = "Find all occurrences of a template image on screen"
+
+	// CompareImagesToolName compares two images
+	CompareImagesToolName        = "compare_images"
+	CompareImagesToolDescription = "Compare two images and return similarity metrics"
+
+	// AssertScreenshotMatchesFixtureToolName compares screenshot to fixture
+	AssertScreenshotMatchesFixtureToolName        = "assert_screenshot_matches_fixture"
+	AssertScreenshotMatchesFixtureToolDescription = "Compare a window screenshot to a golden fixture image"
+
+	// WaitForTextToolName waits for text to appear using OCR
+	WaitForTextToolName        = "wait_for_text"
+	WaitForTextToolDescription = "Wait for specific text to appear on screen using OCR"
+
+	// RestartAppToolName restarts an application
+	RestartAppToolName        = "restart_app"
+	RestartAppToolDescription = "Restart an application (quit and relaunch)"
+
+	// StartRecordingToolName starts screen recording
+	StartRecordingToolName        = "start_recording"
+	StartRecordingToolDescription = "Start recording the screen to a video file"
+
+	// StopRecordingToolName stops screen recording
+	StopRecordingToolName        = "stop_recording"
+	StopRecordingToolDescription = "Stop the current screen recording"
+
+	// TakeScreenshotWithCursorToolName captures screenshot with cursor
+	TakeScreenshotWithCursorToolName        = "take_screenshot_with_cursor"
+	TakeScreenshotWithCursorToolDescription = "Take a screenshot including the mouse cursor"
+
 	// DefaultSSEPort keeps parity with the Python implementation.
 	DefaultSSEPort = 3001
 )
 
 // Config controls MCP server metadata.
 type Config struct {
-	Name    string
-	Version string
+	Name              string
+	Version           string
+	ExperimentalTools bool
+	InputService      *tools.InputService
 }
 
 // NewServer creates and configures the MCP server with all tools.
@@ -57,7 +180,10 @@ func NewServer(service *tools.ScreenshotService, cfg Config) *sdkmcp.Server {
 	if service == nil {
 		service = tools.NewScreenshotService()
 	}
-	inputService := tools.NewInputService()
+	inputService := cfg.InputService
+	if inputService == nil {
+		inputService = tools.NewInputService()
+	}
 	if cfg.Name == "" {
 		cfg.Name = "Screenshot MCP Server"
 	}
@@ -73,178 +199,17 @@ func NewServer(service *tools.ScreenshotService, cfg Config) *sdkmcp.Server {
 		nil,
 	)
 
-	type screenshotArgs struct{}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        ToolName,
-		Description: ToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ screenshotArgs) (*sdkmcp.CallToolResult, any, error) {
-		data, err := service.TakeScreenshot(ctx)
-		if err != nil {
-			return nil, nil, err
+	registerScreenshotTools(server, service)
+	if window.SupportsWindowTools() {
+		registerWindowDiscoveryTools(server, service)
+		registerWindowTools(server)
+		registerInputTools(server, inputService)
+		registerSystemTools(server)
+		registerImageUtilities(server)
+		if cfg.ExperimentalTools {
+			registerExperimentalTools(server)
 		}
-		return tools.ToolResultFromJPEG(data), nil, nil
-	})
-
-	// Add list_windows tool
-	type listWindowsArgs struct{}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        ListWindowsToolName,
-		Description: ListWindowsToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ listWindowsArgs) (*sdkmcp.CallToolResult, any, error) {
-		windows, err := window.ListWindows(ctx)
-		if err != nil {
-			return nil, nil, fmt.Errorf("list windows: %w", err)
-		}
-
-		jsonData, err := json.Marshal(map[string]interface{}{
-			"windows": windows,
-		})
-		if err != nil {
-			return nil, nil, fmt.Errorf("marshal windows: %w", err)
-		}
-
-		return &sdkmcp.CallToolResult{
-			Content: []sdkmcp.Content{
-				&sdkmcp.TextContent{
-					Text: string(jsonData),
-				},
-			},
-		}, nil, nil
-	})
-
-	// Add focus_window tool
-	type focusWindowArgs struct {
-		WindowID uint32 `json:"window_id"`
 	}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        FocusWindowToolName,
-		Description: FocusWindowToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args focusWindowArgs) (*sdkmcp.CallToolResult, any, error) {
-		if args.WindowID == 0 {
-			return nil, nil, fmt.Errorf("window_id is required")
-		}
-
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
-			return nil, nil, fmt.Errorf("focus window: %w", err)
-		}
-
-		return &sdkmcp.CallToolResult{
-			Content: []sdkmcp.Content{
-				&sdkmcp.TextContent{
-					Text: fmt.Sprintf("Window %d focused successfully", args.WindowID),
-				},
-			},
-		}, nil, nil
-	})
-
-	// Add take_window_screenshot tool
-	type takeWindowScreenshotArgs struct {
-		WindowID uint32 `json:"window_id"`
-	}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        TakeWindowScreenshotToolName,
-		Description: TakeWindowScreenshotToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args takeWindowScreenshotArgs) (*sdkmcp.CallToolResult, any, error) {
-		if args.WindowID == 0 {
-			return nil, nil, fmt.Errorf("window_id is required")
-		}
-
-		data, metadata, err := window.TakeWindowScreenshot(ctx, args.WindowID, imgencode.DefaultOptions)
-		if err != nil {
-			return nil, nil, fmt.Errorf("take window screenshot: %w", err)
-		}
-
-		jsonData, err := json.Marshal(metadata)
-		if err != nil {
-			return nil, nil, fmt.Errorf("marshal metadata: %w", err)
-		}
-
-		return &sdkmcp.CallToolResult{
-			Content: []sdkmcp.Content{
-				&sdkmcp.TextContent{
-					Text: string(jsonData),
-				},
-				&sdkmcp.ImageContent{
-					Data:     data,
-					MIMEType: "image/jpeg",
-				},
-			},
-		}, nil, nil
-	})
-
-	// Add click tool
-	type clickArgs struct {
-		WindowID uint32  `json:"window_id"`
-		X        float64 `json:"x"`
-		Y        float64 `json:"y"`
-		Button   string  `json:"button,omitempty"`
-		Clicks   int     `json:"clicks,omitempty"`
-	}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        ClickToolName,
-		Description: ClickToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args clickArgs) (*sdkmcp.CallToolResult, any, error) {
-		if args.WindowID == 0 {
-			return nil, nil, fmt.Errorf("window_id is required")
-		}
-
-		// Set defaults
-		if args.Button == "" {
-			args.Button = "left"
-		}
-		if args.Clicks == 0 {
-			args.Clicks = 1
-		}
-
-		if err := window.Click(ctx, args.WindowID, args.X, args.Y, args.Button, args.Clicks); err != nil {
-			return nil, nil, fmt.Errorf("click: %w", err)
-		}
-
-		return &sdkmcp.CallToolResult{
-			Content: []sdkmcp.Content{
-				&sdkmcp.TextContent{
-					Text: fmt.Sprintf("Clicked at (%.0f, %.0f) in window %d", args.X, args.Y, args.WindowID),
-				},
-			},
-		}, nil, nil
-	})
-
-	// Add press_key tool
-	type pressKeyArgs struct {
-		WindowID   uint32   `json:"window_id"`
-		Key        string   `json:"key"`
-		Modifiers  []string `json:"modifiers,omitempty"`
-		KeyPresses int      `json:"presses,omitempty"`
-	}
-	sdkmcp.AddTool(server, &sdkmcp.Tool{
-		Name:        PressKeyToolName,
-		Description: PressKeyToolDescription,
-	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args pressKeyArgs) (*sdkmcp.CallToolResult, any, error) {
-		if args.WindowID == 0 {
-			return nil, nil, fmt.Errorf("window_id is required")
-		}
-		if args.Key == "" {
-			return nil, nil, fmt.Errorf("key is required")
-		}
-		if args.KeyPresses == 0 {
-			args.KeyPresses = 1
-		}
-		if args.KeyPresses < 0 {
-			return nil, nil, fmt.Errorf("presses must be >= 0")
-		}
-
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
-			return nil, nil, fmt.Errorf("focus window: %w", err)
-		}
-
-		for i := 0; i < args.KeyPresses; i++ {
-			if err := inputService.PressKey(ctx, args.Key, args.Modifiers); err != nil {
-				return nil, nil, err
-			}
-		}
-
-		return tools.ToolResultFromText(fmt.Sprintf("Pressed %q %d time(s) in window %d", args.Key, args.KeyPresses, args.WindowID)), nil, nil
-	})
 
 	return server
 }
@@ -254,7 +219,10 @@ func RunStdio(ctx context.Context, server *sdkmcp.Server) error {
 	if server == nil {
 		return fmt.Errorf("server is nil")
 	}
-	return server.Run(ctx, &sdkmcp.StdioTransport{})
+	if err := server.Run(ctx, &sdkmcp.StdioTransport{}); err != nil {
+		return fmt.Errorf("run stdio server: %w", err)
+	}
+	return nil
 }
 
 // NewSSEHTTPHandler returns an HTTP handler for MCP SSE transport.
@@ -274,8 +242,13 @@ func ListenAndServeSSE(ctx context.Context, server *sdkmcp.Server, port int) err
 	}
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: NewSSEHTTPHandler(server),
+		Addr:              fmt.Sprintf(":%d", port),
+		Handler:           NewSSEHTTPHandler(server),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	errCh := make(chan error, 1)
@@ -285,9 +258,11 @@ func ListenAndServeSSE(ctx context.Context, server *sdkmcp.Server, port int) err
 
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		_ = httpServer.Shutdown(shutdownCtx)
+		if err := httpServer.Shutdown(shutdownCtx); err != nil && !errors.Is(err, context.Canceled) {
+			return fmt.Errorf("shutdown http server: %w", err)
+		}
 
 		err := <-errCh
 		if errors.Is(err, http.ErrServerClosed) || err == nil {

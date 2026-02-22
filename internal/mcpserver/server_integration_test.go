@@ -33,7 +33,9 @@ func TestServerIntegration_InMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("connect client: %v", err)
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	toolsResult, err := session.ListTools(ctx, &sdkmcp.ListToolsParams{})
 	if err != nil {
@@ -73,9 +75,6 @@ func containsTool(list []*sdkmcp.Tool, name string) bool {
 
 func extractImage(t *testing.T, result *sdkmcp.CallToolResult) []byte {
 	t.Helper()
-	if result == nil {
-		t.Fatal("nil call result")
-	}
 	if len(result.Content) == 0 {
 		t.Fatal("empty content")
 	}
