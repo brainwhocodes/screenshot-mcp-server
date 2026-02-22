@@ -296,6 +296,164 @@ func scaleAtPoint(x, y float64) float64 {
 	return float64(C.get_scale_at_point(C.double(x), C.double(y)))
 }
 
+func listWindows() ([]Window, error) {
+	windowList := C.CGWindowListCopyWindowInfo(
+		C.kCGWindowListOptionOnScreenOnly|C.kCGWindowListExcludeDesktopElements,
+		C.kCGNullWindowID,
+	)
+	if C.is_array_null(windowList) == 1 {
+		return nil, fmt.Errorf("failed to get window list")
+	}
+	defer C.CFRelease(C.CFTypeRef(windowList))
+
+	count := C.CFArrayGetCount(windowList)
+	var windows []Window
+
+	for i := C.CFIndex(0); i < count; i++ {
+		windowRef := C.CFArrayGetValueAtIndex(windowList, i)
+		windowDict := C.CFDictionaryRef(windowRef)
+
+		win := parseWindowInfo(windowDict)
+		if win != nil && !win.IsTiny() && !win.IsSystemWindow() && win.IsOnScreen {
+			windows = append(windows, *win)
+		}
+	}
+
+	return windows, nil
+}
+
+func parseWindowInfo(dict C.CFDictionaryRef) *Window {
+	if C.is_dict_null(dict) == 1 {
+		return nil
+	}
+
+	win := &Window{}
+
+	cKeyWindowNumber := C.CString("kCGWindowNumber")
+	if num := C.cf_dict_get_number(dict, cKeyWindowNumber); C.is_number_null(num) == 0 {
+		win.WindowID = uint32(int32(C.cfnumber_to_int32(num)))
+	}
+	C.free(unsafe.Pointer(cKeyWindowNumber))
+
+	cKeyOwnerName := C.CString("kCGWindowOwnerName")
+	if str := C.cf_dict_get_string(dict, cKeyOwnerName); C.is_string_null(str) == 0 {
+		cstr := C.cfstring_to_cstring(str)
+		if cstr != nil {
+			win.OwnerName = C.GoString(cstr)
+			C.free(unsafe.Pointer(cstr))
+		}
+	}
+	C.free(unsafe.Pointer(cKeyOwnerName))
+
+	cKeyOwnerPID := C.CString("kCGWindowOwnerPID")
+	if num := C.cf_dict_get_number(dict, cKeyOwnerPID); C.is_number_null(num) == 0 {
+		win.PID = int32(C.cfnumber_to_int32(num))
+	}
+	C.free(unsafe.Pointer(cKeyOwnerPID))
+
+	cKeyWindowName := C.CString("kCGWindowName")
+	if str := C.cf_dict_get_string(dict, cKeyWindowName); C.is_string_null(str) == 0 {
+		cstr := C.cfstring_to_cstring(str)
+		if cstr != nil {
+			win.Title = C.GoString(cstr)
+			C.free(unsafe.Pointer(cstr))
+		}
+	}
+	C.free(unsafe.Pointer(cKeyWindowName))
+
+	cKeyBounds := C.CString("kCGWindowBounds")
+	if boundsDict := C.cf_dict_get_dict(dict, cKeyBounds); C.is_dict_null(boundsDict) == 0 {
+		win.Bounds = parseBounds(boundsDict)
+	}
+	C.free(unsafe.Pointer(cKeyBounds))
+
+	cKeyOnscreen := C.CString("kCGWindowIsOnscreen")
+	if num := C.cf_dict_get_number(dict, cKeyOnscreen); C.is_number_null(num) == 0 {
+		win.IsOnScreen = int32(C.cfnumber_to_int32(num)) != 0
+	} else {
+		win.IsOnScreen = true
+	}
+	C.free(unsafe.Pointer(cKeyOnscreen))
+
+	return win
+}
+
+func parseBounds(dict C.CFDictionaryRef) Bounds {
+	b := Bounds{}
+
+	cKeyX := C.CString("X")
+	if x := C.cf_dict_get_number(dict, cKeyX); C.is_number_null(x) == 0 {
+		b.X = float64(float64(C.cfnumber_to_double(x)))
+	}
+	C.free(unsafe.Pointer(cKeyX))
+
+	cKeyY := C.CString("Y")
+	if y := C.cf_dict_get_number(dict, cKeyY); C.is_number_null(y) == 0 {
+		b.Y = float64(float64(C.cfnumber_to_double(y)))
+	}
+	C.free(unsafe.Pointer(cKeyY))
+
+	cKeyWidth := C.CString("Width")
+	if w := C.cf_dict_get_number(dict, cKeyWidth); C.is_number_null(w) == 0 {
+		b.Width = float64(float64(C.cfnumber_to_double(w)))
+	}
+	C.free(unsafe.Pointer(cKeyWidth))
+
+	cKeyHeight := C.CString("Height")
+	if h := C.cf_dict_get_number(dict, cKeyHeight); C.is_number_null(h) == 0 {
+		b.Height = float64(float64(C.cfnumber_to_double(h)))
+	}
+	C.free(unsafe.Pointer(cKeyHeight))
+
+	return b
+}
+
+func findWindowByIDCached(windowID uint32) (*Window, error) {
+	windows, err := listWindows()
+	if err != nil {
+		return nil, fmt.Errorf("list windows: %w", err)
+	}
+
+	for i := range windows {
+		if windows[i].WindowID == windowID {
+			return &windows[i], nil
+		}
+	}
+	return nil, fmt.Errorf("window %d not found", windowID)
+}
+
+func focusWindow(ctx context.Context, windowID uint32) error {
+	windows, err := listWindows()
+	if err != nil {
+		return fmt.Errorf("list windows: %w", err)
+	}
+
+	var targetWindow *Window
+	for i := range windows {
+		if windows[i].WindowID == windowID {
+			targetWindow = &windows[i]
+			break
+		}
+	}
+	if targetWindow == nil {
+		return fmt.Errorf("window %d not found", windowID)
+	}
+
+	quotedOwnerName := safeexec.QuoteAppleScriptString(targetWindow.OwnerName)
+	script := fmt.Sprintf(`tell application "System Events" to tell application process "%s" to set frontmost to true`, quotedOwnerName)
+	if err := safeexec.RunAppleScript(ctx, script); err != nil {
+		centerX := targetWindow.Bounds.X + targetWindow.Bounds.Width/2
+		centerY := targetWindow.Bounds.Y + targetWindow.Bounds.Height/2
+		postMouseClickEvent(centerX, centerY, 0, 1)
+	}
+
+	return nil
+}
+
+func permissionState() (bool, bool) {
+	return C.has_screen_capture_access() != 0, C.has_accessibility_access() != 0
+}
+
 // UnsupportedWindowToolsReason returns the human-readable reason automation features are unavailable.
 func UnsupportedWindowToolsReason() string {
 	return ""
@@ -352,202 +510,4 @@ func (w *Window) IsSystemWindow() bool {
 	}
 
 	return false
-}
-
-// ListWindows returns all visible windows
-func ListWindows(_ context.Context) ([]Window, error) {
-	// Get window list with bounds
-	windowList := C.CGWindowListCopyWindowInfo(
-		C.kCGWindowListOptionOnScreenOnly|C.kCGWindowListExcludeDesktopElements,
-		C.kCGNullWindowID,
-	)
-	if C.is_array_null(windowList) == 1 {
-		return nil, fmt.Errorf("failed to get window list")
-	}
-	defer C.CFRelease(C.CFTypeRef(windowList))
-
-	count := C.CFArrayGetCount(windowList)
-	var windows []Window
-
-	for i := C.CFIndex(0); i < count; i++ {
-		windowRef := C.CFArrayGetValueAtIndex(windowList, i)
-		windowDict := C.CFDictionaryRef(windowRef)
-
-		win := parseWindowInfo(windowDict)
-		if win != nil && !win.IsTiny() && !win.IsSystemWindow() && win.IsOnScreen {
-			windows = append(windows, *win)
-		}
-	}
-
-	return windows, nil
-}
-
-func parseWindowInfo(dict C.CFDictionaryRef) *Window {
-	if C.is_dict_null(dict) == 1 {
-		return nil
-	}
-
-	win := &Window{}
-
-	// Get window ID (kCGWindowNumber)
-	cKeyWindowNumber := C.CString("kCGWindowNumber")
-	if num := C.cf_dict_get_number(dict, cKeyWindowNumber); C.is_number_null(num) == 0 {
-		win.WindowID = uint32(int32(C.cfnumber_to_int32(num)))
-	}
-	C.free(unsafe.Pointer(cKeyWindowNumber))
-
-	// Get owner name (kCGWindowOwnerName)
-	cKeyOwnerName := C.CString("kCGWindowOwnerName")
-	if str := C.cf_dict_get_string(dict, cKeyOwnerName); C.is_string_null(str) == 0 {
-		cstr := C.cfstring_to_cstring(str)
-		if cstr != nil {
-			win.OwnerName = C.GoString(cstr)
-			C.free(unsafe.Pointer(cstr))
-		}
-	}
-	C.free(unsafe.Pointer(cKeyOwnerName))
-
-	// Get PID (kCGWindowOwnerPID)
-	cKeyOwnerPID := C.CString("kCGWindowOwnerPID")
-	if num := C.cf_dict_get_number(dict, cKeyOwnerPID); C.is_number_null(num) == 0 {
-		win.PID = int32(C.cfnumber_to_int32(num))
-	}
-	C.free(unsafe.Pointer(cKeyOwnerPID))
-
-	// Get title (kCGWindowName)
-	cKeyWindowName := C.CString("kCGWindowName")
-	if str := C.cf_dict_get_string(dict, cKeyWindowName); C.is_string_null(str) == 0 {
-		cstr := C.cfstring_to_cstring(str)
-		if cstr != nil {
-			win.Title = C.GoString(cstr)
-			C.free(unsafe.Pointer(cstr))
-		}
-	}
-	C.free(unsafe.Pointer(cKeyWindowName))
-
-	// Get bounds (kCGWindowBounds)
-	cKeyBounds := C.CString("kCGWindowBounds")
-	if boundsDict := C.cf_dict_get_dict(dict, cKeyBounds); C.is_dict_null(boundsDict) == 0 {
-		win.Bounds = parseBounds(boundsDict)
-	}
-	C.free(unsafe.Pointer(cKeyBounds))
-
-	// Check if on screen (kCGWindowIsOnscreen)
-	cKeyOnscreen := C.CString("kCGWindowIsOnscreen")
-	if num := C.cf_dict_get_number(dict, cKeyOnscreen); C.is_number_null(num) == 0 {
-		win.IsOnScreen = int32(C.cfnumber_to_int32(num)) != 0
-	} else {
-		win.IsOnScreen = true // Default to true if not present
-	}
-	C.free(unsafe.Pointer(cKeyOnscreen))
-
-	return win
-}
-
-func parseBounds(dict C.CFDictionaryRef) Bounds {
-	b := Bounds{}
-
-	cKeyX := C.CString("X")
-	if x := C.cf_dict_get_number(dict, cKeyX); C.is_number_null(x) == 0 {
-		b.X = float64(float64(C.cfnumber_to_double(x)))
-	}
-	C.free(unsafe.Pointer(cKeyX))
-
-	cKeyY := C.CString("Y")
-	if y := C.cf_dict_get_number(dict, cKeyY); C.is_number_null(y) == 0 {
-		b.Y = float64(float64(C.cfnumber_to_double(y)))
-	}
-	C.free(unsafe.Pointer(cKeyY))
-
-	cKeyWidth := C.CString("Width")
-	if w := C.cf_dict_get_number(dict, cKeyWidth); C.is_number_null(w) == 0 {
-		b.Width = float64(float64(C.cfnumber_to_double(w)))
-	}
-	C.free(unsafe.Pointer(cKeyWidth))
-
-	cKeyHeight := C.CString("Height")
-	if h := C.cf_dict_get_number(dict, cKeyHeight); C.is_number_null(h) == 0 {
-		b.Height = float64(float64(C.cfnumber_to_double(h)))
-	}
-	C.free(unsafe.Pointer(cKeyHeight))
-
-	return b
-}
-
-// FocusWindow brings a window to the foreground
-func FocusWindow(ctx context.Context, windowID uint32) error {
-	windows, err := ListWindows(ctx)
-	if err != nil {
-		return fmt.Errorf("list windows: %w", err)
-	}
-
-	var targetWindow *Window
-	for i := range windows {
-		if windows[i].WindowID == windowID {
-			targetWindow = &windows[i]
-			break
-		}
-	}
-
-	if targetWindow == nil {
-		return fmt.Errorf("window %d not found", windowID)
-	}
-
-	quotedOwnerName := safeexec.QuoteAppleScriptString(targetWindow.OwnerName)
-	script := fmt.Sprintf(`tell application "System Events" to tell application process "%s" to set frontmost to true`, quotedOwnerName)
-	if err := safeexec.RunAppleScript(ctx, script); err != nil {
-		centerX := targetWindow.Bounds.X + targetWindow.Bounds.Width/2
-		centerY := targetWindow.Bounds.Y + targetWindow.Bounds.Height/2
-		C.post_mouse_click(C.double(centerX), C.double(centerY), C.int(0), C.int(1))
-	}
-
-	return nil
-}
-
-func findWindowByID(ctx context.Context, windowID uint32) (*Window, error) {
-	windows, err := ListWindows(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("list windows: %w", err)
-	}
-
-	for i := range windows {
-		if windows[i].WindowID == windowID {
-			return &windows[i], nil
-		}
-	}
-	return nil, fmt.Errorf("window %d not found", windowID)
-}
-
-// CheckPermissions checks if required permissions are granted
-func CheckPermissions() (screenRecording bool, accessibility bool) {
-	screenRecording = C.has_screen_capture_access() != 0
-	accessibility = C.has_accessibility_access() != 0
-	return
-}
-
-// PermissionError indicates missing macOS permissions required by the tool.
-type PermissionError struct {
-	ToolName      string
-	Screen        bool
-	Accessibility bool
-}
-
-func (e *PermissionError) Error() string {
-	if e.ToolName == "" {
-		return "required macOS permissions are not granted"
-	}
-	return fmt.Sprintf("%s requires macOS permissions: screen recording=%t accessibility=%t. enable both in System Settings > Privacy & Security", e.ToolName, e.Screen, e.Accessibility)
-}
-
-// EnsureAutomationPermissions returns an explicit error when screen recording/accessibility are missing.
-func EnsureAutomationPermissions(toolName string) error {
-	screenRecording, accessibility := CheckPermissions()
-	if screenRecording && accessibility {
-		return nil
-	}
-	return &PermissionError{
-		ToolName:      toolName,
-		Screen:        screenRecording,
-		Accessibility: accessibility,
-	}
 }
