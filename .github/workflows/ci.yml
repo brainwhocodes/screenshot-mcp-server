@@ -23,5 +23,7 @@ jobs:
         run: make test
       - name: Run coverage gate
         run: make test-coverage-gate
+      - name: Run critical coverage gate
+        run: make test-coverage-critical
       - name: Run race tests
         run: make test-race

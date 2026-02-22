@@ -34,7 +34,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Expand test hardening:
   - [x] add `-race` test pass,
-  - [ ] add coverage gates for critical flows,
+- [x] add coverage gates for critical flows,
   - [ ] improve deterministic image fixture strategy.
 - [x] Improve docs and consistency:
   - [x] tool support matrix by OS/permissions,
