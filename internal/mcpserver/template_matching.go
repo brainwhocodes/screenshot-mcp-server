@@ -20,7 +20,7 @@ func waitForImageMatch(ctx context.Context, windowID uint32, templatePath string
 	if err := validateThreshold(threshold); err != nil {
 		return nil, fmt.Errorf("wait for image match: %w", err)
 	}
-	timeoutMs, pollIntervalMs = resolveTimeoutAndPoll(timeoutMs, pollIntervalMs, defaultImageWaitTimeoutMs, defaultImageWaitPollMs)
+	timeoutMs, pollIntervalMs = resolveTimeoutAndPoll(timeoutMs, pollIntervalMs)
 
 	deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 	for time.Now().Before(deadline) {

@@ -23,12 +23,12 @@ func validateThreshold(value float64) error {
 	return nil
 }
 
-func resolveTimeoutAndPoll(timeoutMs, pollMs, defaultTimeout, defaultPoll int) (int, int) {
+func resolveTimeoutAndPoll(timeoutMs, pollMs int) (int, int) {
 	if timeoutMs <= 0 {
-		timeoutMs = defaultTimeout
+		timeoutMs = defaultImageWaitTimeoutMs
 	}
 	if pollMs <= 0 {
-		pollMs = defaultPoll
+		pollMs = defaultImageWaitPollMs
 	}
 	return timeoutMs, pollMs
 }

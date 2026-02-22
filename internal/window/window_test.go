@@ -1,6 +1,9 @@
 package window
 
-import "testing"
+import (
+	"image"
+	"testing"
+)
 
 func TestWindow_IsTiny(t *testing.T) {
 	tests := []struct {
@@ -157,5 +160,155 @@ func TestCoordinateClamp(t *testing.T) {
 				t.Errorf("y = %.0f, want %.0f", y, tt.wantY)
 			}
 		})
+	}
+}
+
+func TestClampRect(t *testing.T) {
+	tests := []struct {
+		name     string
+		rect     image.Rectangle
+		bounds   image.Rectangle
+		expected image.Rectangle
+	}{
+		{
+			name:     "already inside",
+			rect:     image.Rect(20, 10, 60, 40),
+			bounds:   image.Rect(0, 0, 100, 100),
+			expected: image.Rect(20, 10, 60, 40),
+		},
+		{
+			name:     "top-left clipped",
+			rect:     image.Rect(-10, -10, 20, 20),
+			bounds:   image.Rect(0, 0, 100, 100),
+			expected: image.Rect(0, 0, 20, 20),
+		},
+		{
+			name:     "bottom-right clipped",
+			rect:     image.Rect(80, 90, 120, 130),
+			bounds:   image.Rect(0, 0, 100, 100),
+			expected: image.Rect(80, 90, 100, 100),
+		},
+		{
+			name:     "fully outside returns empty",
+			rect:     image.Rect(120, 120, 150, 150),
+			bounds:   image.Rect(0, 0, 100, 100),
+			expected: image.Rect(120, 120, 100, 100),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := clampRect(tt.rect, tt.bounds)
+			if got != tt.expected {
+				t.Fatalf("clampRect(%v, %v) = %v, want %v", tt.rect, tt.bounds, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCropRectForWindow(t *testing.T) {
+	tests := []struct {
+		name      string
+		bounds    Bounds
+		imgBounds image.Rectangle
+		scale     float64
+		want      image.Rectangle
+	}{
+		{
+			name:      "simple window clip",
+			bounds:    Bounds{X: 10, Y: 20, Width: 30, Height: 20},
+			imgBounds: image.Rect(0, 0, 200, 150),
+			scale:     2,
+			want:      image.Rect(20, 40, 80, 80),
+		},
+		{
+			name:      "window partially outside",
+			bounds:    Bounds{X: -10, Y: -10, Width: 30, Height: 20},
+			imgBounds: image.Rect(0, 0, 200, 150),
+			scale:     1.5,
+			want:      image.Rect(0, 0, 30, 15),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cropRectForWindow(tt.bounds, tt.imgBounds, tt.scale)
+			if got != tt.want {
+				t.Fatalf("cropRectForWindow(%v, %v, %v) = %v, want %v", tt.bounds, tt.imgBounds, tt.scale, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCropRectForRegion(t *testing.T) {
+	tests := []struct {
+		name       string
+		imgBounds  image.Rectangle
+		x          float64
+		y          float64
+		width      float64
+		height     float64
+		scale      float64
+		coordSpace string
+		want       image.Rectangle
+	}{
+		{
+			name:       "region in points",
+			imgBounds:  image.Rect(0, 0, 200, 150),
+			x:          10,
+			y:          20,
+			width:      30,
+			height:     20,
+			scale:      2,
+			coordSpace: "points",
+			want:       image.Rect(20, 40, 80, 80),
+		},
+		{
+			name:       "region in pixels",
+			imgBounds:  image.Rect(0, 0, 200, 150),
+			x:          20,
+			y:          40,
+			width:      30,
+			height:     20,
+			scale:      3,
+			coordSpace: "pixels",
+			want:       image.Rect(20, 40, 50, 60),
+		},
+		{
+			name:       "region clipped by bounds",
+			imgBounds:  image.Rect(0, 0, 200, 150),
+			x:          180,
+			y:          130,
+			width:      40,
+			height:     40,
+			scale:      2,
+			coordSpace: "pixels",
+			want:       image.Rect(180, 130, 200, 150),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := cropRectForRegion(tt.imgBounds, tt.x, tt.y, tt.width, tt.height, tt.scale, tt.coordSpace)
+			if got != tt.want {
+				t.Fatalf("cropRectForRegion(%v, %.0f, %.0f, %.0f, %.0f, %.0f, %q) = %v, want %v", tt.imgBounds, tt.x, tt.y, tt.width, tt.height, tt.scale, tt.coordSpace, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCoordToPxAndBackIdentity(t *testing.T) {
+	bounds := Bounds{X: 40, Y: 30, Width: 100, Height: 80}
+	scale := 2.0
+	imgBounds := image.Rect(0, 0, 300, 240)
+	cropRect := cropRectForWindow(bounds, imgBounds, scale)
+	if cropRect != image.Rect(80, 60, 280, 220) {
+		t.Fatalf("cropRectForWindow for point mapping = %v", cropRect)
+	}
+
+	mappedX := (float64(cropRect.Min.X) / scale) - bounds.X
+	mappedY := (float64(cropRect.Min.Y) / scale) - bounds.Y
+	if mappedX != 0 || mappedY != 0 {
+		t.Fatalf("round-trip mapping mismatch (%.1f, %.1f) from window bounds %v", mappedX, mappedY, bounds)
 	}
 }

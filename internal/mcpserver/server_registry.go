@@ -718,7 +718,7 @@ func registerWaitForImageMatchTool(server *sdkmcp.Server) {
 		if err := validateThreshold(args.Threshold); err != nil {
 			return nil, nil, err
 		}
-		args.TimeoutMs, args.PollIntervalMs = resolveTimeoutAndPoll(args.TimeoutMs, args.PollIntervalMs, defaultImageWaitTimeoutMs, defaultImageWaitPollMs)
+		args.TimeoutMs, args.PollIntervalMs = resolveTimeoutAndPoll(args.TimeoutMs, args.PollIntervalMs)
 		coords, err := waitForImageMatch(ctx, args.WindowID, args.TemplateImage, args.Threshold, args.TimeoutMs, args.PollIntervalMs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("wait for image match: %w", err)
