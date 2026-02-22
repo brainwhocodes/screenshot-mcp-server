@@ -18,11 +18,11 @@ type keyActionHandler func(context.Context, *tools.InputService, string, []strin
 func registerScreenshotTools(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	registerTakeScreenshotTool(server, service, windowService)
 	registerTakeScreenshotPNGTool(server, service, windowService)
+	registerScreenshotHashTool(server, service, windowService)
 }
 
-func registerWindowDiscoveryTools(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
+func registerWindowDiscoveryTools(server *sdkmcp.Server, windowService WindowService) {
 	registerListWindowsTool(server, windowService)
-	registerScreenshotHashTool(server, service, windowService)
 }
 
 func registerWindowTools(server *sdkmcp.Server, windowService WindowService) {

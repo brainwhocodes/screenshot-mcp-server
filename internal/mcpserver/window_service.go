@@ -42,6 +42,9 @@ func (defaultWindowService) SupportsWindowTools() bool {
 }
 
 func (defaultWindowService) EnsureAutomationPermissions(toolName string) error {
+	if !window.SupportsWindowTools() {
+		return nil
+	}
 	if err := window.EnsureAutomationPermissions(toolName); err != nil {
 		return wrapWindowServiceError("ensure automation permissions", err)
 	}

@@ -214,7 +214,7 @@ func NewServer(service ScreenshotService, cfg Config) *sdkmcp.Server {
 
 	registerScreenshotTools(server, service, windowService)
 	if windowService.SupportsWindowTools() {
-		registerWindowDiscoveryTools(server, service, windowService)
+		registerWindowDiscoveryTools(server, windowService)
 		registerWindowTools(server, windowService)
 		registerInputTools(server, inputService, windowService)
 		registerSystemTools(server, windowService)
