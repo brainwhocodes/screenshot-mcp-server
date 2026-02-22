@@ -1,0 +1,31 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - gocyclo
+    - funlen
+    - dupl
+    - unparam
+    - gocognit
+    - nestif
+    - maintidx
+    - gosec
+    - wrapcheck
+    - contextcheck
+    - revive
+
+issues:
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - gosec
+        - revive
