@@ -176,7 +176,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Dependency injection + testability
 
 - [x] Pass `InputService` into `mcpserver.NewServer` (it’s created internally today), so tests can stub input without OS permissions.
-- [ ] Introduce interfaces for “window ops” and “screenshot capture” used by MCP tools (so unit tests can be hermetic).
+- [x] Introduce interfaces for “window ops” and “screenshot capture” used by MCP tools (so unit tests can be hermetic).
 - [x] Add targeted unit tests for coordinate mapping (points↔pixels) and clamping that don’t require real windows.
 
 ### Tool responses + errors
@@ -213,7 +213,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 ### Service boundaries
 
-- [ ] Extract a thin service layer from MCP handlers to separate transport concerns from automation logic.
+- [x] Extract a thin service layer from MCP handlers to separate transport concerns from automation logic.
 - [x] Introduce shared validators for common args (`window_id`, coordinates, timeout/poll defaults, file paths).
 - [ ] Centralize JSON serialization for tool responses to avoid repeated `json.Marshal` patterns.
 
