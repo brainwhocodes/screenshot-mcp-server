@@ -28,3 +28,16 @@ func ToolResultFromJSON(value any) (*sdkmcp.CallToolResult, error) {
 		},
 	}, nil
 }
+
+// ToolResultFromJSONWithImage returns image/text JSON content in a single response.
+func ToolResultFromJSONWithImage(value any, imageData []byte, mimeType string) (*sdkmcp.CallToolResult, error) {
+	result, err := ToolResultFromJSON(value)
+	if err != nil {
+		return nil, err
+	}
+	result.Content = append(result.Content, &sdkmcp.ImageContent{
+		Data:     imageData,
+		MIMEType: mimeType,
+	})
+	return result, nil
+}

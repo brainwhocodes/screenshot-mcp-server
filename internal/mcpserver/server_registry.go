@@ -210,14 +210,10 @@ func registerTakeWindowScreenshotTool(server *sdkmcp.Server, windowService Windo
 		if err != nil {
 			return nil, nil, fmt.Errorf("take window screenshot: %w", err)
 		}
-		result, err := tools.ToolResultFromJSON(metadata)
+		result, err := tools.ToolResultFromJSONWithImage(metadata, data, "image/jpeg")
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal window metadata: %w", err)
 		}
-		result.Content = append(result.Content, &sdkmcp.ImageContent{
-			Data:     data,
-			MIMEType: "image/jpeg",
-		})
 		return result, nil, nil
 	})
 }
@@ -239,14 +235,10 @@ func registerTakeWindowScreenshotPNGTool(server *sdkmcp.Server, windowService Wi
 		if err != nil {
 			return nil, nil, fmt.Errorf("take window screenshot: %w", err)
 		}
-		result, err := tools.ToolResultFromJSON(metadata)
+		result, err := tools.ToolResultFromJSONWithImage(metadata, data, "image/png")
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal window metadata: %w", err)
 		}
-		result.Content = append(result.Content, &sdkmcp.ImageContent{
-			Data:     data,
-			MIMEType: "image/png",
-		})
 		return result, nil, nil
 	})
 }
@@ -273,14 +265,10 @@ func registerTakeRegionScreenshotTool(server *sdkmcp.Server, windowService Windo
 		if err != nil {
 			return nil, nil, fmt.Errorf("take region screenshot: %w", err)
 		}
-		result, err := tools.ToolResultFromJSON(metadata)
+		result, err := tools.ToolResultFromJSONWithImage(metadata, data, "image/jpeg")
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal metadata: %w", err)
 		}
-		result.Content = append(result.Content, &sdkmcp.ImageContent{
-			Data:     data,
-			MIMEType: "image/jpeg",
-		})
 		return result, nil, nil
 	})
 }
@@ -307,14 +295,10 @@ func registerTakeRegionScreenshotPNGTool(server *sdkmcp.Server, windowService Wi
 		if err != nil {
 			return nil, nil, fmt.Errorf("take region screenshot: %w", err)
 		}
-		result, err := tools.ToolResultFromJSON(metadata)
+		result, err := tools.ToolResultFromJSONWithImage(metadata, data, "image/png")
 		if err != nil {
 			return nil, nil, fmt.Errorf("marshal metadata: %w", err)
 		}
-		result.Content = append(result.Content, &sdkmcp.ImageContent{
-			Data:     data,
-			MIMEType: "image/png",
-		})
 		return result, nil, nil
 	})
 }
