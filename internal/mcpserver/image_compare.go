@@ -87,7 +87,8 @@ func validateComparisonPaths(image1Path, image2Path string) error {
 }
 
 func decodeImageFromPath(path string) (image.Image, error) {
-	// #nosec G304 -- path is validated by ValidatePathAllowed before open.
+	// Accepted G304 suppression: image paths are validated by ValidatePathAllowed.
+	// #nosec G304
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open image: %w", err)
@@ -198,28 +199,15 @@ func assertScreenshotMatchesFixture(ctx context.Context, windowID uint32, fixtur
 		return nil, err
 	}
 
-	screenshotData, _, err := window.TakeWindowScreenshot(ctx, windowID, imgencode.DefaultOptions)
+	tempPath, cleanupTempFile, err := captureWindowFixtureScreenshot(ctx, windowID)
 	if err != nil {
-		return nil, fmt.Errorf("capture window screenshot: %w", err)
-	}
-
-	tmpFile, err := os.CreateTemp("", "window-screenshot-*.jpg")
-	if err != nil {
-		return nil, fmt.Errorf("create temp screenshot: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpFile.Name())
-		return nil, fmt.Errorf("close temp screenshot file: %w", err)
-	}
-	if err := os.WriteFile(tmpFile.Name(), screenshotData, 0o600); err != nil {
-		_ = os.Remove(tmpFile.Name())
-		return nil, fmt.Errorf("write temp screenshot: %w", err)
+		return nil, err
 	}
 	defer func() {
-		_ = os.Remove(tmpFile.Name())
+		_ = cleanupTempFile()
 	}()
 
-	comparison, err := compareImagesWithMasks(tmpFile.Name(), fixturePath, threshold, maskRegions)
+	comparison, err := compareImagesWithMasks(tempPath, fixturePath, threshold, maskRegions)
 	if err != nil {
 		return nil, err
 	}
@@ -228,5 +216,33 @@ func assertScreenshotMatchesFixture(ctx context.Context, windowID uint32, fixtur
 		ImageComparisonResult: *comparison,
 		FixturePath:           fixturePath,
 		WindowID:              windowID,
+	}, nil
+}
+
+func captureWindowFixtureScreenshot(ctx context.Context, windowID uint32) (string, func() error, error) {
+	screenshotData, _, err := window.TakeWindowScreenshot(ctx, windowID, imgencode.DefaultOptions)
+	if err != nil {
+		return "", nil, fmt.Errorf("capture window screenshot: %w", err)
+	}
+
+	tmpFile, err := CreateArtifactFile(fmt.Sprintf("window-%d-fixture", windowID), "jpg")
+	if err != nil {
+		return "", nil, fmt.Errorf("create fixture screenshot: %w", err)
+	}
+
+	filePath := tmpFile.Name()
+	if _, err := tmpFile.Write(screenshotData); err != nil {
+		_ = tmpFile.Close()
+		_ = os.Remove(filePath)
+		return "", nil, fmt.Errorf("write fixture screenshot: %w", err)
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(filePath)
+		return "", nil, fmt.Errorf("close fixture screenshot file: %w", err)
+	}
+
+	return filePath, func() error {
+		return os.Remove(filePath)
 	}, nil
 }
