@@ -20,7 +20,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### P1 (Do Next: structure and maintainability)
 
 - [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
-- [ ] Extract MCP-independent service layer and shared validators (window IDs, coords, timeouts, paths).
+- [x] Extract MCP-independent service layer and shared validators (window IDs, coords, timeouts, paths).
 - [x] Standardize response and error patterns:
   - [x] add `tools.ToolResultFromJSON(any)`,
   - [x] enforce consistent `TextContent`/`ImageContent` conventions,
@@ -214,7 +214,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Service boundaries
 
 - [ ] Extract a thin service layer from MCP handlers to separate transport concerns from automation logic.
-- [ ] Introduce shared validators for common args (`window_id`, coordinates, timeout/poll defaults, file paths).
+- [x] Introduce shared validators for common args (`window_id`, coordinates, timeout/poll defaults, file paths).
 - [ ] Centralize JSON serialization for tool responses to avoid repeated `json.Marshal` patterns.
 
 ### Tests and determinism

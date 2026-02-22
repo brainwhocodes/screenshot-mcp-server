@@ -186,18 +186,16 @@ func assertScreenshotMatchesFixture(ctx context.Context, windowID uint32, fixtur
 	if err := ValidatePathAllowed(fixturePath); err != nil {
 		return nil, fmt.Errorf("fixture path not allowed: %w", err)
 	}
-	if windowID == 0 {
-		return nil, fmt.Errorf("window_id is required")
+	if err := validateWindowID(windowID); err != nil {
+		return nil, err
 	}
 	threshold = defaultThreshold(threshold, defaultComparisonThreshold)
 	if err := validateThreshold(threshold); err != nil {
 		return nil, err
 	}
 
-	for _, region := range maskRegions {
-		if region.Width < 0 || region.Height < 0 {
-			return nil, fmt.Errorf("mask regions must have non-negative width and height")
-		}
+	if err := validateMaskRegions(maskRegions); err != nil {
+		return nil, err
 	}
 
 	screenshotData, _, err := window.TakeWindowScreenshot(ctx, windowID, imgencode.DefaultOptions)

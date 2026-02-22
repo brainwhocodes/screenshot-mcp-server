@@ -979,34 +979,6 @@ func registerMouseButtonTool(server *sdkmcp.Server, toolName, description string
 	})
 }
 
-func validateWindowID(windowID uint32) error {
-	if windowID == 0 {
-		return fmt.Errorf("window_id is required")
-	}
-	return nil
-}
-
-func validateRegionInput(width, height float64, coordSpace string) error {
-	if err := validatePositiveDimensions(width, height); err != nil {
-		return err
-	}
-	_, err := normalizeCoordSpace(coordSpace)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func normalizeCoordSpace(coordSpace string) (string, error) {
-	if coordSpace == "" {
-		return "points", nil
-	}
-	if coordSpace != "points" && coordSpace != "pixels" {
-		return "", fmt.Errorf("coord_space must be 'points' or 'pixels', got %q", coordSpace)
-	}
-	return coordSpace, nil
-}
-
 func focusWindowAndHandleError(ctx context.Context, windowID uint32) error {
 	if err := window.FocusWindow(ctx, windowID); err != nil {
 		return fmt.Errorf("focus window: %w", err)
@@ -1017,16 +989,6 @@ func focusWindowAndHandleError(ctx context.Context, windowID uint32) error {
 func ensureWindowPermissions(toolName string) error {
 	if err := window.EnsureAutomationPermissions(toolName); err != nil {
 		return fmt.Errorf("%s: %w", toolName, err)
-	}
-	return nil
-}
-
-func validatePositiveDimensions(width, height float64) error {
-	if width <= 0 {
-		return fmt.Errorf("width is required and must be > 0")
-	}
-	if height <= 0 {
-		return fmt.Errorf("height is required and must be > 0")
 	}
 	return nil
 }
