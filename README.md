@@ -36,11 +36,11 @@ A Go implementation of an MCP server and client for full-screen screenshots, wit
   - `assert_screenshot_matches_fixture`
   - `set_clipboard`
   - `get_clipboard`
-  - `start_recording` *(experimental, placeholder)*
-  - `stop_recording` *(experimental, placeholder)*
-  - `wait_for_text` *(experimental, placeholder)*
-  - `restart_app` *(experimental, placeholder)*
-  - `take_screenshot_with_cursor` *(experimental, placeholder)*
+  - `start_recording` *(experimental)*
+  - `stop_recording` *(experimental)*
+  - `wait_for_text` *(experimental)*
+  - `restart_app` *(experimental)*
+  - `take_screenshot_with_cursor` *(experimental)*
 - JPEG/PNG outputs and image hash support
 - Optional `--experimental` tools for non-production workflows
 - stdio transport server
@@ -144,7 +144,7 @@ Brings a window to the foreground and activates its application.
 | `list_windows`, `focus_window`, `take_window_screenshot*` | ✅ | ❌ | Window automation requires macOS APIs (not registered on other OSes) |
 | input + wait tools (`click`, `press_key`, `wait_for_pixel`, etc.) | ✅ | ❌ | Require macOS accessibility APIs (not registered on other OSes) |
 | app/process helpers (`launch_app`, `quit_app`, etc.) | ✅ | ❌ | macOS-specific commands (not registered on other OSes) |
-| experimental tools (`wait_for_text`, recording, cursor capture, etc.) | ✅ | ❌ | Behind `--experimental`; currently placeholder implementations |
+| experimental tools (`wait_for_text`, recording, cursor capture, etc.) | ✅ | ❌ | Behind `--experimental`; feature availability depends on host tools (`tesseract`, `screencapture`, `ffmpeg`) |
 
 ### `take_screenshot`
 
