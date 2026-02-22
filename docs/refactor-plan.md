@@ -215,10 +215,10 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Extract a thin service layer from MCP handlers to separate transport concerns from automation logic.
 - [x] Introduce shared validators for common args (`window_id`, coordinates, timeout/poll defaults, file paths).
-- [ ] Centralize JSON serialization for tool responses to avoid repeated `json.Marshal` patterns.
+- [x] Centralize JSON serialization for tool responses to avoid repeated `json.Marshal` patterns.
 
 ### Tests and determinism
 
 - [x] Add race test pass (`go test -race`) for packages with mutable process/global state.
-- [ ] Add coverage gates for critical flows (window targeting, coordinate mapping, click safety).
+- [x] Add coverage gates for critical flows (window targeting, coordinate mapping, click safety).
 - [ ] Add deterministic fixture strategy for image-based tests (stable codec options and metadata stripping where needed).

@@ -3,6 +3,7 @@ BIN_DIR ?= ./bin
 
 .PHONY: build test test-race test-coverage lint clean
 COVERAGE_MIN ?= 10.0
+COVERAGE_CRITICAL_MIN ?= 10.0
 
 build:
 	mkdir -p $(BIN_DIR)
@@ -29,6 +30,20 @@ test-coverage-gate:
 		echo "coverage gate passed: $$coverage% (minimum $(COVERAGE_MIN)%)"; \
 	else \
 		echo "coverage gate failed: $$coverage% (minimum $(COVERAGE_MIN)%)"; \
+		exit 1; \
+	fi
+
+test-coverage-critical:
+	$(GO) test ./internal/mcpserver ./internal/window -coverprofile=coverage-critical.out -covermode=atomic
+	@coverage=$$(go tool cover -func=coverage-critical.out | awk '/^total:/ {print $$3}' | tr -d '%'); \
+	if [ -z "$$coverage" ]; then \
+		echo "coverage report missing"; \
+		exit 1; \
+	fi; \
+	if awk -v value="$$coverage" -v min="$(COVERAGE_CRITICAL_MIN)" 'BEGIN { exit !(value >= min) }'; then \
+		echo "critical coverage gate passed: $$coverage% (minimum $(COVERAGE_CRITICAL_MIN)%)"; \
+	else \
+		echo "critical coverage gate failed: $$coverage% (minimum $(COVERAGE_CRITICAL_MIN)%)"; \
 		exit 1; \
 	fi
 
