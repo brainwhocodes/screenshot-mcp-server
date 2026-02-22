@@ -6,7 +6,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
 - [ ] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
 - [x] Reduce cyclomatic complexity in core handlers (still pending on `internal/mcpserver/server.go`::`NewServer` and MCP registration flow).
-- [ ] Split long functions (`internal/mcpserver/server.go`::`NewServer`, several `internal/window/window.go` screenshot/input helpers).
+- [x] Split long functions (`internal/mcpserver/server.go`::`NewServer`, several `internal/window/window.go` screenshot/input helpers).
 - [x] Reduce cognitive complexity (`internal/mcpserver/server.go`::`NewServer`).
 - [x] Standardize error wrapping at package boundaries (especially MCP handlers and OS integration helpers).
 - [x] Define pass-through error policy for `errors.Is`/`errors.As` versus wrapped context errors.
