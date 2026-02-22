@@ -51,7 +51,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 6. [x] Refactor `(*Agent).Run` and `GetAction` into smaller units.
 7. [ ] Split `window.go` and `tools_utility.go`; extract shared validators/services.
 8. [x] Unify response/error helpers and wrap policy across packages.
-9. [ ] Add race/coverage/determinism quality gates.
+9. [x] Add race/coverage/determinism quality gates.
 10. [x] Finish docs/support-matrix/style consistency backlog.
 
 ## Linting + CI hygiene
