@@ -51,7 +51,8 @@ A Go implementation of an MCP server and client for full-screen screenshots, wit
 ## Requirements
 
 - Go `1.25+`
-- macOS (primary platform for window automation)
+- macOS is required for window + input automation tools (window listing/focus/window screenshots/clicks/keys).
+- Other OSes can use full-screen screenshot tools (`take_screenshot`, `take_screenshot_png`, and `screenshot_hash` with `target: "screen"`) where the screenshot backend is supported.
 
 ## Build
 
@@ -138,11 +139,12 @@ Brings a window to the foreground and activates its application.
 
 | Tool | macOS | Other OSes | Notes |
 | --- | :---: | :---: | --- |
-| `take_screenshot`, `take_screenshot_png`, `screenshot_hash` | ✅ | ✅ | Screenshot capture via `github.com/kbinani/screenshot` and service layer |
-| `list_windows`, `focus_window`, `take_window_screenshot*`, input tools | ✅ | ❌ | Window automation requires macOS APIs |
-| app/process helpers (`launch_app`, `quit_app`, etc.) | ✅ | ❌ | macOS-specific commands |
-| OCR/wait helpers (`wait_for_text`) | ✅ | ✅ | currently returns a placeholder error when unavailable |
-| Cursor/recording/extras | macOS only | ❌ | exposed with `experimental` flag; currently placeholder implementations |
+| `take_screenshot`, `take_screenshot_png` | ✅ | ✅ | Full-screen screenshot capture via `github.com/kbinani/screenshot` |
+| `screenshot_hash` | ✅ | ✅ | Hashes the full screen; `target: "window"` requires macOS window tools |
+| `list_windows`, `focus_window`, `take_window_screenshot*` | ✅ | ❌ | Window automation requires macOS APIs (not registered on other OSes) |
+| input + wait tools (`click`, `press_key`, `wait_for_pixel`, etc.) | ✅ | ❌ | Require macOS accessibility APIs (not registered on other OSes) |
+| app/process helpers (`launch_app`, `quit_app`, etc.) | ✅ | ❌ | macOS-specific commands (not registered on other OSes) |
+| experimental tools (`wait_for_text`, recording, cursor capture, etc.) | ✅ | ❌ | Behind `--experimental`; currently placeholder implementations |
 
 ### `take_screenshot`
 
