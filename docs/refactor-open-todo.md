@@ -8,7 +8,6 @@
 - [ ] Split `internal/mcpserver/server.go` into per-tool registration files.
 - [ ] Split `internal/window/window.go` into focused input/list/focus/screenshot/permission files.
 - [ ] Move long helper implementations out of MCP wiring code to keep `NewServer` mostly `register` calls.
-- [ ] Centralize permission checks + messaging (screen recording / accessibility) so all relevant tools fail consistently.
 - [ ] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
 - [ ] Standardize naming/style polish called out by `revive` where worthwhile.
 - [ ] Normalize style issues (non-blocking refactors for readability).

@@ -16,7 +16,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files.
 - [ ] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
 - [ ] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
-- [ ] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
+- [x] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
 - [ ] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
 - [x] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
 - [x] Add explicit timeouts for OS calls (`osascript`, process management) to avoid hangs during long test runs.
@@ -194,7 +194,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Add `//go:build darwin` to macOS-only implementation files and provide non-darwin stubs where needed (keep `go test ./...` working on other OSes).
 - [x] Ensure MCP tool registration is OS-aware (don’t advertise tools that will always error on the current platform).
-- [ ] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
+- [x] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
 
 ### Dependency injection + testability
 
