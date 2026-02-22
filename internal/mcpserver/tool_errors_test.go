@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/window"
 )
 
 func TestAsToolExecutionErrorPreservesExistingToolError(t *testing.T) {

@@ -12,9 +12,9 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/mcpserver"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/version"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/mcpserver"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/safeexec"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/version"
 )
 
 const (

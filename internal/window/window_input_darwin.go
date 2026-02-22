@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
 )
 
 // MouseMove moves the mouse cursor to the specified coordinates.

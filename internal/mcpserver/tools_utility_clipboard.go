@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/safeexec"
 )
 
 // setClipboard sets the macOS clipboard content using pbcopy.

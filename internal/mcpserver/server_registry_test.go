@@ -6,7 +6,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/tools"
 )
 
 func TestNewServer_ToolNamesAreUnique(t *testing.T) {

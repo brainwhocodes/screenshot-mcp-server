@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/input"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/input"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/window"
 )
 
 // Config defines how the automation agent runs.

@@ -10,9 +10,9 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/mcpserver"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/testutil"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/mcpserver"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/testutil"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/tools"
 )
 
 func TestExtractJPEG_NoImageContent(t *testing.T) {

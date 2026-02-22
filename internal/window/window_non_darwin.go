@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
 )
 
 const unsupportedWindowToolsMessage = "window automation is only supported on macOS (darwin)"

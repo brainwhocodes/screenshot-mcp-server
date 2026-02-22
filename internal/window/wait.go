@@ -9,7 +9,7 @@ import (
 	"image/draw"
 	"time"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/screenshot"
 )
 
 // WaitForPixel waits until the pixel at (x,y) matches the expected RGBA within tolerance.

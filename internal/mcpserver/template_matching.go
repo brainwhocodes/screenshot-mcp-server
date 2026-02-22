@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	screencap "github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
+	screencap "github.com/brainwhocodes/screenshot_mcp_server/internal/screenshot"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/window"
 )
 
 // waitForImageMatch waits for a template image to appear on screen.

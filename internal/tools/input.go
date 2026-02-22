@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/input"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/input"
 )
 
 // PressKeyFunc sends a key press to the OS.

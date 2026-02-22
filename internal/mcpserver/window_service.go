@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"image"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/window"
 )
 
 // WindowService represents the host operations required by MCP window tools.

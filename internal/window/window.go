@@ -264,7 +264,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/safeexec"
 )
 
 // SupportsWindowTools reports whether this platform supports window-level automation features.

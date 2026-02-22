@@ -11,8 +11,8 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/version"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/tools"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/version"
 )
 
 // ScreenshotService defines MCP-facing screenshot capture dependencies.

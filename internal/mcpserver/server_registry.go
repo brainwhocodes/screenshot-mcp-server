@@ -7,8 +7,8 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/tools"
 )
 
 type mouseButtonAction func(context.Context, uint32, float64, float64, string) error

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/safeexec"
 )
 
 const processCommandTimeout = 5 * time.Second

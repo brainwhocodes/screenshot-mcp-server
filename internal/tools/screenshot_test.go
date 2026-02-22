@@ -9,8 +9,8 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/testutil"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/testutil"
 )
 
 func TestTakeScreenshot_UsesFixtureWhenSet(t *testing.T) {

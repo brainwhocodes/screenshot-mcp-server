@@ -10,7 +10,7 @@ import (
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/tools"
 )
 
 // Integration tests require macOS and the integration build tag.

@@ -9,8 +9,8 @@ import (
 	"image"
 	"math"
 
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/imgencode"
+	"github.com/brainwhocodes/screenshot_mcp_server/internal/screenshot"
 )
 
 // TakeWindowScreenshot captures a window and returns JPEG bytes with metadata

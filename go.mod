@@ -1,4 +1,4 @@
-module github.com/codingthefuturewithai/screenshot_mcp_server
+module github.com/brainwhocodes/screenshot_mcp_server
 
 go 1.25.6
 
