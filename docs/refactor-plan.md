@@ -15,7 +15,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
 - [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files.
 - [ ] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
-- [ ] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
+- [x] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
 - [x] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
 - [x] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
 - [x] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
@@ -189,7 +189,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files (one tool/feature group per file).
 - [ ] Split `internal/window/window.go` (~1081 LOC) into focused files (list/focus/screenshot/input/permissions).
-- [ ] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
+- [x] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
 
 ### Platform boundaries (macOS-only code)
 
