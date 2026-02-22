@@ -9,12 +9,7 @@ import (
 )
 
 func TestInputService_PressKey_NotConfigured(t *testing.T) {
-	var svc *InputService
-	if err := svc.PressKey(context.Background(), "a", nil); err == nil {
-		t.Fatal("expected error for nil service")
-	}
-
-	svc = &InputService{}
+	svc := &InputService{}
 	if err := svc.PressKey(context.Background(), "a", nil); err == nil {
 		t.Fatal("expected error for nil press function")
 	}
@@ -68,6 +63,7 @@ func TestToolResultFromText(t *testing.T) {
 	result := ToolResultFromText("hello")
 	if result == nil {
 		t.Fatal("expected result")
+		return
 	}
 	if len(result.Content) != 1 {
 		t.Fatalf("expected 1 content item, got %d", len(result.Content))

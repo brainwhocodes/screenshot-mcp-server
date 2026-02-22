@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"image"
 	"os"
+	"path/filepath"
+	"strings"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -43,7 +45,7 @@ func NewScreenshotService() *ScreenshotService {
 // TakeScreenshot returns JPEG bytes for the current screen.
 func (s *ScreenshotService) TakeScreenshot(ctx context.Context) ([]byte, error) {
 	if fixturePath := os.Getenv(FixtureImagePathEnv); fixturePath != "" {
-		data, err := os.ReadFile(fixturePath)
+		data, err := readFixtureImage(fixturePath)
 		if err != nil {
 			return nil, fmt.Errorf("read fixture image %q: %w", fixturePath, err)
 		}
@@ -67,6 +69,33 @@ func (s *ScreenshotService) TakeScreenshot(ctx context.Context) ([]byte, error) 
 	return data, nil
 }
 
+// TakeScreenshotPNG returns PNG bytes for the current screen (lossless).
+func (s *ScreenshotService) TakeScreenshotPNG(ctx context.Context) ([]byte, error) {
+	if fixturePath := os.Getenv(FixtureImagePathEnv); fixturePath != "" {
+		data, err := readFixtureImage(fixturePath)
+		if err != nil {
+			return nil, fmt.Errorf("read fixture image %q: %w", fixturePath, err)
+		}
+		return data, nil
+	}
+
+	if s == nil || s.Capture == nil {
+		return nil, fmt.Errorf("screenshot service is not configured")
+	}
+
+	img, err := s.Capture(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("capture screenshot: %w", err)
+	}
+
+	data, err := imgencode.EncodePNG(img)
+	if err != nil {
+		return nil, fmt.Errorf("encode screenshot: %w", err)
+	}
+
+	return data, nil
+}
+
 // ToolResultFromJPEG wraps bytes in MCP image content.
 func ToolResultFromJPEG(data []byte) *sdkmcp.CallToolResult {
 	return &sdkmcp.CallToolResult{
@@ -80,4 +109,18 @@ func ToolResultFromJPEG(data []byte) *sdkmcp.CallToolResult {
 			},
 		},
 	}
+}
+
+func readFixtureImage(fixturePath string) ([]byte, error) {
+	cleanPath := filepath.Clean(fixturePath)
+	cleanPath = strings.TrimSpace(cleanPath)
+	if cleanPath == "" {
+		return nil, fmt.Errorf("fixture path is empty")
+	}
+	// #nosec G304 -- fixture path is intentionally configurable for local deterministic tests.
+	data, err := os.ReadFile(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("read fixture image: %w", err)
+	}
+	return data, nil
 }

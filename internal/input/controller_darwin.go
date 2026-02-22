@@ -12,6 +12,15 @@ package input
 CGEventRef create_keyboard_event(CGKeyCode keyCode, bool keyDown) {
 	return CGEventCreateKeyboardEvent(NULL, keyCode, keyDown);
 }
+
+// Helper to create a keyboard event with unicode string
+CGEventRef create_unicode_keyboard_event(bool keyDown, UniChar character) {
+	CGEventRef event = CGEventCreateKeyboardEvent(NULL, 0, keyDown);
+	if (event) {
+		CGEventKeyboardSetUnicodeString(event, 1, &character);
+	}
+	return event;
+}
 */
 import "C"
 
@@ -19,6 +28,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type darwinController struct{}
@@ -31,7 +41,7 @@ func NewController() Controller {
 func (darwinController) PressKey(ctx context.Context, key string, modifiers []string) error {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("context canceled: %w", ctx.Err())
 	default:
 	}
 
@@ -62,6 +72,132 @@ func (darwinController) PressKey(ctx context.Context, key string, modifiers []st
 	}
 
 	return nil
+}
+
+func (darwinController) TypeText(ctx context.Context, text string, delayMs int) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context canceled: %w", ctx.Err())
+	default:
+	}
+
+	if C.AXIsProcessTrusted() == 0 {
+		return fmt.Errorf("accessibility permission required (System Settings → Privacy & Security → Accessibility)")
+	}
+
+		for _, r := range text {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context canceled: %w", ctx.Err())
+			default:
+			}
+
+		if err := darwinTypeRune(r); err != nil {
+			return err
+		}
+
+			if delayMs > 0 {
+				select {
+				case <-ctx.Done():
+					return fmt.Errorf("context canceled: %w", ctx.Err())
+				case <-time.After(time.Duration(delayMs) * time.Millisecond):
+				}
+			}
+	}
+
+	return nil
+}
+
+func darwinTypeRune(r rune) error {
+	// Check for special characters that have direct key codes
+	switch r {
+	case ' ':
+		return darwinPostKeyEvent(darwinKeyCodes["space"], 0, true)
+	case '\t':
+		return darwinPostKeyEvent(darwinKeyCodes["tab"], 0, true)
+	case '\n':
+		return darwinPostKeyEvent(darwinKeyCodes["enter"], 0, true)
+	case '\r':
+		return darwinPostKeyEvent(darwinKeyCodes["return"], 0, true)
+	}
+
+	// For regular characters, use unicode keyboard event helper
+	// This handles uppercase, special chars, etc. properly
+	event := C.create_unicode_keyboard_event(C.bool(true), C.UniChar(r))
+	if event == 0 {
+		return fmt.Errorf("failed to create keyboard event")
+	}
+	defer C.CFRelease(C.CFTypeRef(event))
+
+	C.CGEventPost(C.kCGHIDEventTap, event)
+
+	eventUp := C.create_unicode_keyboard_event(C.bool(false), C.UniChar(r))
+	if eventUp == 0 {
+		return fmt.Errorf("failed to create keyboard up event")
+	}
+	defer C.CFRelease(C.CFTypeRef(eventUp))
+
+	C.CGEventPost(C.kCGHIDEventTap, eventUp)
+
+	return nil
+}
+
+func (darwinController) KeyDown(ctx context.Context, key string, modifiers []string) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context canceled: %w", ctx.Err())
+	default:
+	}
+
+	if C.AXIsProcessTrusted() == 0 {
+		return fmt.Errorf("accessibility permission required (System Settings → Privacy & Security → Accessibility)")
+	}
+
+	normalizedKey := normalizeToken(key)
+	if normalizedKey == "" {
+		return fmt.Errorf("key is required")
+	}
+
+	keyCode, ok := darwinKeyCodes[normalizedKey]
+	if !ok {
+		return fmt.Errorf("unsupported key %q", key)
+	}
+
+	flags, err := darwinModifierFlags(modifiers)
+	if err != nil {
+		return err
+	}
+
+	return darwinPostKeyEvent(keyCode, flags, true)
+}
+
+func (darwinController) KeyUp(ctx context.Context, key string, modifiers []string) error {
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("context canceled: %w", ctx.Err())
+	default:
+	}
+
+	if C.AXIsProcessTrusted() == 0 {
+		return fmt.Errorf("accessibility permission required (System Settings → Privacy & Security → Accessibility)")
+	}
+
+	normalizedKey := normalizeToken(key)
+	if normalizedKey == "" {
+		return fmt.Errorf("key is required")
+	}
+
+	keyCode, ok := darwinKeyCodes[normalizedKey]
+	if !ok {
+		return fmt.Errorf("unsupported key %q", key)
+	}
+
+	flags, err := darwinModifierFlags(modifiers)
+	if err != nil {
+		return err
+	}
+
+	return darwinPostKeyEvent(keyCode, flags, false)
 }
 
 func normalizeToken(raw string) string {

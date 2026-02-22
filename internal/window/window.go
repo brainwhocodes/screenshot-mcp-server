@@ -1,3 +1,7 @@
+//go:build darwin
+// +build darwin
+
+// Package window provides macOS window discovery and input helpers used by MCP tools.
 package window
 
 /*
@@ -130,18 +134,151 @@ int has_screen_capture_access() {
 int has_accessibility_access() {
     return AXIsProcessTrusted() ? 1 : 0;
 }
+
+// Get display scale factor for the main display
+double get_display_scale() {
+    CGDirectDisplayID mainDisplay = CGMainDisplayID();
+    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(mainDisplay);
+    if (mode == NULL) {
+        return 1.0;
+    }
+
+    size_t widthPixels = CGDisplayModeGetPixelWidth(mode);
+    size_t widthPoints = CGDisplayPixelsWide(mainDisplay);
+    if (widthPoints == 0) {
+        CGDisplayModeRelease(mode);
+        return 1.0;
+    }
+
+    // Calculate scale: on Retina, pixels > points
+    double scale = (double)widthPixels / (double)widthPoints;
+    CGDisplayModeRelease(mode);
+
+    if (scale < 1.0) {
+        scale = 1.0;
+    }
+    return scale;
+}
+
+// Get scale factor for a point on screen (handles multi-monitor)
+double get_scale_at_point(double x, double y) {
+    CGPoint point = CGPointMake(x, y);
+    CGDirectDisplayID displayID;
+    uint32_t count;
+
+    if (CGGetDisplaysWithPoint(point, 1, &displayID, &count) != kCGErrorSuccess || count == 0) {
+        return get_display_scale();
+    }
+
+    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displayID);
+    if (mode == NULL) {
+        return 1.0;
+    }
+
+    size_t widthPixels = CGDisplayModeGetPixelWidth(mode);
+    size_t widthPoints = CGDisplayPixelsWide(displayID);
+    CGDisplayModeRelease(mode);
+
+    if (widthPoints == 0) {
+        return 1.0;
+    }
+
+    double scale = (double)widthPixels / (double)widthPoints;
+    if (scale < 1.0) {
+        scale = 1.0;
+    }
+    return scale;
+}
+
+// Post mouse move event
+void post_mouse_move(double x, double y) {
+    CGPoint point = CGPointMake(x, y);
+    CGEventRef event = CGEventCreateMouseEvent(NULL, kCGEventMouseMoved, point, kCGMouseButtonLeft);
+    if (event) {
+        CGEventPost(kCGHIDEventTap, event);
+        CFRelease(event);
+    }
+}
+
+// Post mouse down event
+void post_mouse_down(double x, double y, int button) {
+    CGEventType downType;
+    CGMouseButton mouseButton;
+
+    if (button == 0) { // left
+        downType = kCGEventLeftMouseDown;
+        mouseButton = kCGMouseButtonLeft;
+    } else if (button == 1) { // right
+        downType = kCGEventRightMouseDown;
+        mouseButton = kCGMouseButtonRight;
+    } else { // middle
+        downType = kCGEventOtherMouseDown;
+        mouseButton = kCGMouseButtonCenter;
+    }
+
+    CGPoint point = CGPointMake(x, y);
+    CGEventRef event = CGEventCreateMouseEvent(NULL, downType, point, mouseButton);
+    if (event) {
+        CGEventPost(kCGHIDEventTap, event);
+        CFRelease(event);
+    }
+}
+
+// Post mouse up event
+void post_mouse_up(double x, double y, int button) {
+    CGEventType upType;
+    CGMouseButton mouseButton;
+
+    if (button == 0) { // left
+        upType = kCGEventLeftMouseUp;
+        mouseButton = kCGMouseButtonLeft;
+    } else if (button == 1) { // right
+        upType = kCGEventRightMouseUp;
+        mouseButton = kCGMouseButtonRight;
+    } else { // middle
+        upType = kCGEventOtherMouseUp;
+        mouseButton = kCGMouseButtonCenter;
+    }
+
+    CGPoint point = CGPointMake(x, y);
+    CGEventRef event = CGEventCreateMouseEvent(NULL, upType, point, mouseButton);
+    if (event) {
+        CGEventPost(kCGHIDEventTap, event);
+        CFRelease(event);
+    }
+}
+
+// Post scroll event (deltaX and deltaY in pixels, positive = right/down)
+void post_scroll(double x, double y, double deltaX, double deltaY) {
+    CGPoint point = CGPointMake(x, y);
+    CGEventRef event = CGEventCreateScrollWheelEvent(NULL, kCGScrollEventUnitPixel, 2, (int32_t)deltaY, (int32_t)deltaX);
+    if (event) {
+        CGEventPost(kCGHIDEventTap, event);
+        CFRelease(event);
+    }
+}
 */
 import "C"
 import (
 	"context"
 	"fmt"
 	"image"
-	"os/exec"
 	"unsafe"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
+	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/screenshot"
 )
+
+// SupportsWindowTools reports whether this platform supports window-level automation features.
+func SupportsWindowTools() bool {
+	return true
+}
+
+// UnsupportedWindowToolsReason returns the human-readable reason automation features are unavailable.
+func UnsupportedWindowToolsReason() string {
+	return ""
+}
 
 // Window represents a macOS window
 type Window struct {
@@ -197,7 +334,7 @@ func (w *Window) IsSystemWindow() bool {
 }
 
 // ListWindows returns all visible windows
-func ListWindows(ctx context.Context) ([]Window, error) {
+func ListWindows(_ context.Context) ([]Window, error) {
 	// Get window list with bounds
 	windowList := C.CGWindowListCopyWindowInfo(
 		C.kCGWindowListOptionOnScreenOnly|C.kCGWindowListExcludeDesktopElements,
@@ -318,7 +455,6 @@ func parseBounds(dict C.CFDictionaryRef) Bounds {
 
 // FocusWindow brings a window to the foreground
 func FocusWindow(ctx context.Context, windowID uint32) error {
-	// Get the window info to find its PID
 	windows, err := ListWindows(ctx)
 	if err != nil {
 		return fmt.Errorf("list windows: %w", err)
@@ -336,110 +472,54 @@ func FocusWindow(ctx context.Context, windowID uint32) error {
 		return fmt.Errorf("window %d not found", windowID)
 	}
 
-	// Use AppleScript to activate the application
-	script := fmt.Sprintf(`tell application "System Events" to tell application process "%s" to set frontmost to true`, targetWindow.OwnerName)
-	return runAppleScript(script)
-}
-
-func runAppleScript(script string) error {
-	cmd := exec.Command("osascript", "-e", script)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("apple script failed: %w, output: %s", err, string(output))
+	quotedOwnerName := safeexec.QuoteAppleScriptString(targetWindow.OwnerName)
+	script := fmt.Sprintf(`tell application "System Events" to tell application process "%s" to set frontmost to true`, quotedOwnerName)
+	if err := safeexec.RunAppleScript(ctx, script); err != nil {
+		centerX := targetWindow.Bounds.X + targetWindow.Bounds.Width/2
+		centerY := targetWindow.Bounds.Y + targetWindow.Bounds.Height/2
+		C.post_mouse_click(C.double(centerX), C.double(centerY), C.int(0), C.int(1))
 	}
+
 	return nil
 }
 
 // TakeWindowScreenshot captures a window and returns JPEG bytes with metadata
-// Uses fallback: take full screen screenshot and crop to window bounds
+// Uses full screen capture and crop to window bounds
 func TakeWindowScreenshot(ctx context.Context, windowID uint32, opts imgencode.Options) ([]byte, *ScreenshotMetadata, error) {
-	// Get current window info
-	windows, err := ListWindows(ctx)
+	encode := func(img image.Image) ([]byte, error) {
+		return imgencode.EncodeJPEG(img, opts)
+	}
+	return captureWindowImage(ctx, windowID, encode)
+}
+
+func captureWindowImage(ctx context.Context, windowID uint32, encode func(image.Image) ([]byte, error)) ([]byte, *ScreenshotMetadata, error) {
+	targetWindow, err := findWindowByID(ctx, windowID)
 	if err != nil {
-		return nil, nil, fmt.Errorf("list windows: %w", err)
+		return nil, nil, err
 	}
 
-	var targetWindow *Window
-	for i := range windows {
-		if windows[i].WindowID == windowID {
-			targetWindow = &windows[i]
-			break
-		}
-	}
-
-	if targetWindow == nil {
-		return nil, nil, fmt.Errorf("window %d not found", windowID)
-	}
-
-	// Capture full screen using existing capturer
 	capturer := screenshot.NewCapturer()
 	fullImg, err := capturer.Capture(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("capture screen: %w", err)
 	}
 
-	// Calculate pixel bounds from points
-	// For Retina displays, we need to account for scale factor
-	bounds := targetWindow.Bounds
+	scale := getScaleForWindow(targetWindow.Bounds)
+	cropRect := cropRectForWindow(targetWindow.Bounds, fullImg.Bounds(), scale)
+	croppedImg := cropImage(fullImg, cropRect)
 
-	// Get the scale factor by comparing image bounds to screen bounds
-	// This is a rough approximation - for accurate results we'd need to query the display
-	// But for now we'll assume uniform scaling
-	imgBounds := fullImg.Bounds()
-	scaleX := float64(imgBounds.Dx()) / 2560.0 // Assuming standard screen width in points
-	scaleY := float64(imgBounds.Dy()) / 1440.0 // Assuming standard screen height in points
-
-	// Use the average scale
-	scale := (scaleX + scaleY) / 2.0
-	if scale < 1.0 {
-		scale = 1.0
-	}
-
-	// Convert points to pixels
-	x1 := int(bounds.X * scale)
-	y1 := int(bounds.Y * scale)
-	x2 := int((bounds.X + bounds.Width) * scale)
-	y2 := int((bounds.Y + bounds.Height) * scale)
-
-	// Ensure bounds are within image
-	if x1 < 0 {
-		x1 = 0
-	}
-	if y1 < 0 {
-		y1 = 0
-	}
-	if x2 > imgBounds.Max.X {
-		x2 = imgBounds.Max.X
-	}
-	if y2 > imgBounds.Max.Y {
-		y2 = imgBounds.Max.Y
-	}
-
-	// Crop the image
-	cropRect := image.Rect(x1, y1, x2, y2)
-	croppedImg := fullImg.(interface {
-		SubImage(r image.Rectangle) image.Image
-	}).SubImage(cropRect)
-
-	// Encode to JPEG
-	data, err := imgencode.EncodeJPEG(croppedImg, opts)
+	data, err := encode(croppedImg)
 	if err != nil {
 		return nil, nil, fmt.Errorf("encode screenshot: %w", err)
 	}
 
-	// Calculate actual dimensions
-	imgWidth := x2 - x1
-	imgHeight := y2 - y1
-
-	metadata := &ScreenshotMetadata{
+	return data, &ScreenshotMetadata{
 		WindowID:    windowID,
-		Bounds:      bounds,
-		ImageWidth:  imgWidth,
-		ImageHeight: imgHeight,
+		Bounds:      targetWindow.Bounds,
+		ImageWidth:  cropRect.Dx(),
+		ImageHeight: cropRect.Dy(),
 		Scale:       scale,
-	}
-
-	return data, metadata, nil
+	}, nil
 }
 
 // Click performs a mouse click at the specified coordinates
@@ -505,9 +585,305 @@ func Click(ctx context.Context, windowID uint32, x, y float64, button string, cl
 	return nil
 }
 
+// RegionMetadata contains metadata about a region screenshot
+type RegionMetadata struct {
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Width       float64 `json:"width"`
+	Height      float64 `json:"height"`
+	ImageWidth  int     `json:"image_width"`
+	ImageHeight int     `json:"image_height"`
+	Scale       float64 `json:"scale"`
+	CoordSpace  string  `json:"coord_space"`
+}
+
+// TakeRegionScreenshot captures a region of the screen and returns JPEG bytes with metadata.
+// coordSpace can be "points" (screen coordinates) or "pixels" (image coordinates).
+// When coordSpace is "points", the region is specified in screen points (Quartz coordinates).
+// When coordSpace is "pixels", the region is specified in pixel coordinates.
+func TakeRegionScreenshot(ctx context.Context, x, y, width, height float64, coordSpace string, opts imgencode.Options) ([]byte, *RegionMetadata, error) {
+	encode := func(img image.Image) ([]byte, error) {
+		return imgencode.EncodeJPEG(img, opts)
+	}
+	return captureRegionScreenshot(ctx, x, y, width, height, coordSpace, encode)
+}
+
+// TakeWindowScreenshotPNG captures a window and returns PNG bytes (lossless).
+func TakeWindowScreenshotPNG(ctx context.Context, windowID uint32) ([]byte, *ScreenshotMetadata, error) {
+	encode := func(img image.Image) ([]byte, error) {
+		return imgencode.EncodePNG(img)
+	}
+	return captureWindowImage(ctx, windowID, encode)
+}
+
+// TakeRegionScreenshotPNG captures a region and returns PNG bytes (lossless).
+func TakeRegionScreenshotPNG(ctx context.Context, x, y, width, height float64, coordSpace string) ([]byte, *RegionMetadata, error) {
+	encode := func(img image.Image) ([]byte, error) {
+		return imgencode.EncodePNG(img)
+	}
+	return captureRegionScreenshot(ctx, x, y, width, height, coordSpace, encode)
+}
+
+func captureRegionScreenshot(ctx context.Context, x, y, width, height float64, coordSpace string, encode func(image.Image) ([]byte, error)) ([]byte, *RegionMetadata, error) {
+	fullImg, err := screenshot.NewCapturer().Capture(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("capture screen: %w", err)
+	}
+
+	centerX := x + width/2
+	centerY := y + height/2
+	scale := float64(C.get_scale_at_point(C.double(centerX), C.double(centerY)))
+	cropRect := cropRectForRegion(fullImg.Bounds(), x, y, width, height, scale, coordSpace)
+	croppedImg := cropImage(fullImg, cropRect)
+
+	data, err := encode(croppedImg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("encode screenshot: %w", err)
+	}
+
+	metadata := &RegionMetadata{
+		X:           float64(cropRect.Min.X) / scale,
+		Y:           float64(cropRect.Min.Y) / scale,
+		Width:       float64(cropRect.Dx()) / scale,
+		Height:      float64(cropRect.Dy()) / scale,
+		ImageWidth:  cropRect.Dx(),
+		ImageHeight: cropRect.Dy(),
+		Scale:       scale,
+		CoordSpace:  coordSpace,
+	}
+	return data, metadata, nil
+}
+
+func cropRectForRegion(imgBounds image.Rectangle, x, y, width, height, scale float64, coordSpace string) image.Rectangle {
+	var x1, y1, x2, y2 int
+	if coordSpace == "pixels" {
+		x1, y1, x2, y2 = int(x), int(y), int(x+width), int(y+height)
+	} else {
+		x1, y1, x2, y2 = int(x*scale), int(y*scale), int((x+width)*scale), int((y+height)*scale)
+	}
+
+	return clampRect(image.Rect(x1, y1, x2, y2), imgBounds)
+}
+
+func getScaleForWindow(bounds Bounds) float64 {
+	centerX := bounds.X + bounds.Width/2
+	centerY := bounds.Y + bounds.Height/2
+	return float64(C.get_scale_at_point(C.double(centerX), C.double(centerY)))
+}
+
+func cropRectForWindow(bounds Bounds, imgBounds image.Rectangle, scale float64) image.Rectangle {
+	x1 := int(bounds.X * scale)
+	y1 := int(bounds.Y * scale)
+	x2 := int((bounds.X + bounds.Width) * scale)
+	y2 := int((bounds.Y + bounds.Height) * scale)
+	return clampRect(image.Rect(x1, y1, x2, y2), imgBounds)
+}
+
+func clampRect(rect, bounds image.Rectangle) image.Rectangle {
+	x1, y1, x2, y2 := rect.Min.X, rect.Min.Y, rect.Max.X, rect.Max.Y
+	if x1 < bounds.Min.X {
+		x1 = bounds.Min.X
+	}
+	if y1 < bounds.Min.Y {
+		y1 = bounds.Min.Y
+	}
+	if x2 > bounds.Max.X {
+		x2 = bounds.Max.X
+	}
+	if y2 > bounds.Max.Y {
+		y2 = bounds.Max.Y
+	}
+	return image.Rect(x1, y1, x2, y2)
+}
+
+func cropImage(img image.Image, rect image.Rectangle) image.Image {
+	return img.(interface {
+		SubImage(r image.Rectangle) image.Image
+	}).SubImage(rect)
+}
+
+func findWindowByID(ctx context.Context, windowID uint32) (*Window, error) {
+	windows, err := ListWindows(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list windows: %w", err)
+	}
+
+	for i := range windows {
+		if windows[i].WindowID == windowID {
+			return &windows[i], nil
+		}
+	}
+	return nil, fmt.Errorf("window %d not found", windowID)
+}
+
+// MouseMove moves the mouse cursor to the specified coordinates.
+// x, y are pixel coordinates in the screenshot image.
+func MouseMove(ctx context.Context, windowID uint32, x, y float64) error {
+	_, _, xPt, yPt, err := mapWindowInputPoint(ctx, windowID, x, y)
+	if err != nil {
+		return err
+	}
+
+	C.post_mouse_move(C.double(xPt), C.double(yPt))
+	return nil
+}
+
+// MouseDown sends a mouse down event at the specified coordinates.
+func MouseDown(ctx context.Context, windowID uint32, x, y float64, button string) error {
+	return postMouseButton(ctx, windowID, x, y, button, func(xPt, yPt C.double, btn C.int) {
+		C.post_mouse_down(xPt, yPt, btn)
+	})
+}
+
+// MouseUp sends a mouse up event at the specified coordinates.
+func MouseUp(ctx context.Context, windowID uint32, x, y float64, button string) error {
+	return postMouseButton(ctx, windowID, x, y, button, func(xPt, yPt C.double, btn C.int) {
+		C.post_mouse_up(xPt, yPt, btn)
+	})
+}
+
+func postMouseButton(
+	ctx context.Context,
+	windowID uint32,
+	x, y float64,
+	button string,
+	send func(C.double, C.double, C.int),
+) error {
+	_, _, xPt, yPt, err := mapWindowInputPoint(ctx, windowID, x, y)
+	if err != nil {
+		return err
+	}
+	btn := buttonToInt(button)
+	send(C.double(xPt), C.double(yPt), C.int(btn))
+	return nil
+}
+
+func mapWindowInputPoint(ctx context.Context, windowID uint32, x, y float64) (*Window, *ScreenshotMetadata, float64, float64, error) {
+	windows, err := ListWindows(ctx)
+	if err != nil {
+		return nil, nil, 0, 0, fmt.Errorf("list windows: %w", err)
+	}
+
+	var targetWindow *Window
+	for i := range windows {
+		if windows[i].WindowID == windowID {
+			targetWindow = &windows[i]
+			break
+		}
+	}
+
+	if targetWindow == nil {
+		return nil, nil, 0, 0, fmt.Errorf("window %d not found", windowID)
+	}
+
+	_, metadata, err := TakeWindowScreenshot(ctx, windowID, imgencode.Options{Quality: 1})
+	if err != nil {
+		return nil, nil, 0, 0, fmt.Errorf("take screenshot for coordinate mapping: %w", err)
+	}
+
+	x = clampCoord(x, float64(metadata.ImageWidth))
+	y = clampCoord(y, float64(metadata.ImageHeight))
+
+	xPt := targetWindow.Bounds.X + (x / metadata.Scale)
+	yPt := targetWindow.Bounds.Y + (y / metadata.Scale)
+
+	return targetWindow, metadata, xPt, yPt, nil
+}
+
+func mapWindowDragPoints(
+	ctx context.Context,
+	windowID uint32,
+	fromX, fromY, toX, toY float64,
+) (*Window, *ScreenshotMetadata, float64, float64, float64, float64, error) {
+	targetWindow, metadata, fromXPt, fromYPt, err := mapWindowInputPoint(ctx, windowID, fromX, fromY)
+	if err != nil {
+		return nil, nil, 0, 0, 0, 0, err
+	}
+
+	toX = clampCoord(toX, float64(metadata.ImageWidth))
+	toY = clampCoord(toY, float64(metadata.ImageHeight))
+
+	toXPt := targetWindow.Bounds.X + (toX / metadata.Scale)
+	toYPt := targetWindow.Bounds.Y + (toY / metadata.Scale)
+
+	return targetWindow, metadata, fromXPt, fromYPt, toXPt, toYPt, nil
+}
+
+// Drag performs a drag operation from one point to another.
+func Drag(ctx context.Context, windowID uint32, fromX, fromY, toX, toY float64, button string) error {
+	_, _, fromXPt, fromYPt, toXPt, toYPt, err := mapWindowDragPoints(ctx, windowID, fromX, fromY, toX, toY)
+	if err != nil {
+		return err
+	}
+	btn := buttonToInt(button)
+	C.post_mouse_down(C.double(fromXPt), C.double(fromYPt), C.int(btn))
+	C.post_mouse_move(C.double(toXPt), C.double(toYPt))
+	C.post_mouse_up(C.double(toXPt), C.double(toYPt), C.int(btn))
+	return nil
+}
+
+// Scroll performs a scroll operation at the specified coordinates.
+// deltaX and deltaY are in pixels (positive = right/down).
+func Scroll(ctx context.Context, windowID uint32, x, y, deltaX, deltaY float64) error {
+	_, _, xPt, yPt, err := mapWindowInputPoint(ctx, windowID, x, y)
+	if err != nil {
+		return err
+	}
+	C.post_scroll(C.double(xPt), C.double(yPt), C.double(deltaX), C.double(deltaY))
+	return nil
+}
+
+func clampCoord(val, maxValue float64) float64 {
+	if val < 0 {
+		return 0
+	}
+	if val >= maxValue {
+		return maxValue - 1
+	}
+	return val
+}
+
+func buttonToInt(button string) int {
+	switch button {
+	case "right":
+		return 1
+	case "middle":
+		return 2
+	default:
+		return 0
+	}
+}
+
 // CheckPermissions checks if required permissions are granted
 func CheckPermissions() (screenRecording bool, accessibility bool) {
 	screenRecording = C.has_screen_capture_access() != 0
 	accessibility = C.has_accessibility_access() != 0
 	return
+}
+
+// PermissionError indicates missing macOS permissions required by the tool.
+type PermissionError struct {
+	ToolName      string
+	Screen        bool
+	Accessibility bool
+}
+
+func (e *PermissionError) Error() string {
+	if e.ToolName == "" {
+		return "required macOS permissions are not granted"
+	}
+	return fmt.Sprintf("%s requires macOS permissions: screen recording=%t accessibility=%t. enable both in System Settings > Privacy & Security", e.ToolName, e.Screen, e.Accessibility)
+}
+
+// EnsureAutomationPermissions returns an explicit error when screen recording/accessibility are missing.
+func EnsureAutomationPermissions(toolName string) error {
+	screenRecording, accessibility := CheckPermissions()
+	if screenRecording && accessibility {
+		return nil
+	}
+	return &PermissionError{
+		ToolName:      toolName,
+		Screen:        screenRecording,
+		Accessibility: accessibility,
+	}
 }

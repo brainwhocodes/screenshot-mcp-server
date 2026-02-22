@@ -67,6 +67,7 @@ func TestToolResultFromJPEG(t *testing.T) {
 	result := ToolResultFromJPEG(data)
 	if result == nil {
 		t.Fatal("expected result")
+		return
 	}
 	if len(result.Content) != 2 {
 		t.Fatalf("expected 2 content items, got %d", len(result.Content))
