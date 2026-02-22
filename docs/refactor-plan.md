@@ -3,8 +3,8 @@
 Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. This file is for code health, maintainability, and correctness refactors.
 
 ## Remaining TODO
-- [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
-- [ ] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
+- [x] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
+- [x] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
 - [x] Reduce cyclomatic complexity in core handlers (still pending on `internal/mcpserver/server.go`::`NewServer` and MCP registration flow).
 - [x] Split long functions (`internal/mcpserver/server.go`::`NewServer`, several `internal/window/window.go` screenshot/input helpers).
 - [x] Reduce cognitive complexity (`internal/mcpserver/server.go`::`NewServer`).
@@ -13,8 +13,8 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Address integer-cast warnings in hashing and pixel conversion code (`G115`) with explicit bounds checks.
 - [x] Document accepted `gosec` suppressions in code comments where test-only behavior is intentional.
 - [x] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
-- [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files.
-- [ ] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
+- [x] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files.
+- [x] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
 - [x] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
 - [x] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
 - [x] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
@@ -42,7 +42,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 ### P1 (Do Next: structure and maintainability)
 
-- [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
+- [x] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
 - [x] Extract MCP-independent service layer and shared validators (window IDs, coords, timeouts, paths).
 - [x] Standardize response and error patterns:
   - [x] add `tools.ToolResultFromJSON(any)`,
@@ -62,7 +62,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Improve docs and consistency:
   - [x] tool support matrix by OS/permissions,
   - [x] keep README tool list synced (prefer generated table).
-- [ ] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
+- [x] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
 
 ## Implementation Order
 
@@ -72,7 +72,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 4. [x] Gate/remove placeholder tools that are currently stubbed.
 5. [x] Refactor `NewServer` into registration modules.
 6. [x] Refactor `(*Agent).Run` and `GetAction` into smaller units.
-7. [ ] Split `window.go` and `tools_utility.go`; extract shared validators/services.
+7. [x] Split `window.go` and `tools_utility.go`; extract shared validators/services.
 8. [x] Unify response/error helpers and wrap policy across packages.
 9. [x] Add race/coverage/determinism quality gates.
 10. [x] Finish docs/support-matrix/style consistency backlog.
@@ -124,7 +124,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
   - [x] `internal/mcpserver/server.go`: `NewServer`
   - [x] `internal/mcpserver/tools_utility.go`: `compareImages`
   - [x] `internal/mcpserver/image_compare.go`: `assertScreenshotMatchesFixture`
-  - [ ] `internal/window/window.go`: `TakeWindowScreenshot`, `TakeRegionScreenshot`, `TakeWindowScreenshotPNG`, `TakeRegionScreenshotPNG`
+- [x] `internal/window/window.go`: `TakeWindowScreenshot`, `TakeRegionScreenshot`, `TakeWindowScreenshotPNG`, `TakeRegionScreenshotPNG`
 
 ### Duplicate logic hotspots
 
@@ -181,14 +181,14 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Add package comments where missing (`cmd/agent`, `internal/testutil`, `internal/version`).
 - [x] Add/normalize comments for exported API types and methods in `internal/agent`.
 - [x] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
-- [ ] Normalize style issues called out by revive that improve readability without churn.
+- [x] Normalize style issues called out by revive that improve readability without churn.
 
 ## Second-pass refactor ideas
 
 ### Split large files
 
-- [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files (one tool/feature group per file).
-- [ ] Split `internal/window/window.go` (~1081 LOC) into focused files (list/focus/screenshot/input/permissions).
+- [x] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files (one tool/feature group per file).
+- [x] Split `internal/window/window.go` (~1081 LOC) into focused files (list/focus/screenshot/input/permissions).
 - [x] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
 
 ### Platform boundaries (macOS-only code)
