@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"image"
@@ -94,6 +95,32 @@ func (s *ScreenshotService) TakeScreenshotPNG(ctx context.Context) ([]byte, erro
 	}
 
 	return data, nil
+}
+
+// CaptureImage captures and returns a full-screen image.
+func (s *ScreenshotService) CaptureImage(ctx context.Context) (image.Image, error) {
+	if fixturePath := os.Getenv(FixtureImagePathEnv); fixturePath != "" {
+		data, err := readFixtureImage(fixturePath)
+		if err != nil {
+			return nil, fmt.Errorf("read fixture image %q: %w", fixturePath, err)
+		}
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, fmt.Errorf("decode fixture image %q: %w", fixturePath, err)
+		}
+		return img, nil
+	}
+
+	if s == nil || s.Capture == nil {
+		return nil, fmt.Errorf("screenshot service is not configured")
+	}
+
+	img, err := s.Capture(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("capture image: %w", err)
+	}
+
+	return img, nil
 }
 
 // ToolResultFromJPEG wraps bytes in MCP image content.

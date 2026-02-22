@@ -8,7 +8,6 @@ import (
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/imgencode"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
 )
 
 type mouseButtonArgs struct {
@@ -22,69 +21,69 @@ type mouseButtonAction func(context.Context, uint32, float64, float64, string) e
 
 type keyActionHandler func(context.Context, *tools.InputService, string, []string) error
 
-func registerScreenshotTools(server *sdkmcp.Server, service *tools.ScreenshotService) {
-	registerTakeScreenshotTool(server, service)
-	registerTakeScreenshotPNGTool(server, service)
+func registerScreenshotTools(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
+	registerTakeScreenshotTool(server, service, windowService)
+	registerTakeScreenshotPNGTool(server, service, windowService)
 }
 
-func registerWindowDiscoveryTools(server *sdkmcp.Server, service *tools.ScreenshotService) {
-	registerListWindowsTool(server)
-	registerScreenshotHashTool(server, service)
+func registerWindowDiscoveryTools(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
+	registerListWindowsTool(server, windowService)
+	registerScreenshotHashTool(server, service, windowService)
 }
 
-func registerWindowTools(server *sdkmcp.Server) {
-	registerFocusWindowTool(server)
-	registerTakeWindowScreenshotTool(server)
-	registerTakeWindowScreenshotPNGTool(server)
-	registerTakeRegionScreenshotTool(server)
-	registerTakeRegionScreenshotPNGTool(server)
-	registerClickTool(server)
-	registerMouseMoveTool(server)
-	registerMouseButtonTool(server, MouseDownToolName, MouseDownToolDescription, "down", window.MouseDown)
-	registerMouseButtonTool(server, MouseUpToolName, MouseUpToolDescription, "up", window.MouseUp)
-	registerDragTool(server)
-	registerScrollTool(server)
+func registerWindowTools(server *sdkmcp.Server, windowService WindowService) {
+	registerFocusWindowTool(server, windowService)
+	registerTakeWindowScreenshotTool(server, windowService)
+	registerTakeWindowScreenshotPNGTool(server, windowService)
+	registerTakeRegionScreenshotTool(server, windowService)
+	registerTakeRegionScreenshotPNGTool(server, windowService)
+	registerClickTool(server, windowService)
+	registerMouseMoveTool(server, windowService)
+	registerMouseButtonTool(server, MouseDownToolName, MouseDownToolDescription, "down", windowService.MouseDown, windowService)
+	registerMouseButtonTool(server, MouseUpToolName, MouseUpToolDescription, "up", windowService.MouseUp, windowService)
+	registerDragTool(server, windowService)
+	registerScrollTool(server, windowService)
 }
 
-func registerInputTools(server *sdkmcp.Server, inputService *tools.InputService) {
-	registerPressKeyTool(server, inputService)
-	registerTypeTextTool(server, inputService)
-	registerKeyActionTool(server, KeyDownToolName, KeyDownToolDescription, inputService, performKeyDown)
-	registerKeyActionTool(server, KeyUpToolName, KeyUpToolDescription, inputService, performKeyUp)
+func registerInputTools(server *sdkmcp.Server, inputService *tools.InputService, windowService WindowService) {
+	registerPressKeyTool(server, inputService, windowService)
+	registerTypeTextTool(server, inputService, windowService)
+	registerKeyActionTool(server, KeyDownToolName, KeyDownToolDescription, inputService, performKeyDown, windowService)
+	registerKeyActionTool(server, KeyUpToolName, KeyUpToolDescription, inputService, performKeyUp, windowService)
 }
 
-func registerSystemTools(server *sdkmcp.Server) {
-	registerWaitForPixelTool(server)
-	registerWaitForRegionStableTool(server)
-	registerLaunchAppTool(server)
-	registerQuitAppTool(server)
-	registerWaitForProcessTool(server)
-	registerKillProcessTool(server)
+func registerSystemTools(server *sdkmcp.Server, windowService WindowService) {
+	registerWaitForPixelTool(server, windowService)
+	registerWaitForRegionStableTool(server, windowService)
+	registerLaunchAppTool(server, windowService)
+	registerQuitAppTool(server, windowService)
+	registerWaitForProcessTool(server, windowService)
+	registerKillProcessTool(server, windowService)
 	registerClipboardTools(server)
 }
 
-func registerImageUtilities(server *sdkmcp.Server) {
-	registerWaitForImageMatchTool(server)
-	registerFindImageMatchesTool(server)
-	registerCompareImagesTool(server)
-	registerAssertScreenshotMatchesFixtureTool(server)
+func registerImageUtilities(server *sdkmcp.Server, windowService WindowService) {
+	registerWaitForImageMatchTool(server, windowService)
+	registerFindImageMatchesTool(server, windowService)
+	registerCompareImagesTool(server, windowService)
+	registerAssertScreenshotMatchesFixtureTool(server, windowService)
 }
 
-func registerExperimentalTools(server *sdkmcp.Server) {
-	registerWaitForTextTool(server)
-	registerRestartAppTool(server)
-	registerStartRecordingTool(server)
-	registerStopRecordingTool(server)
-	registerTakeScreenshotWithCursorTool(server)
+func registerExperimentalTools(server *sdkmcp.Server, windowService WindowService) {
+	registerWaitForTextTool(server, windowService)
+	registerRestartAppTool(server, windowService)
+	registerStartRecordingTool(server, windowService)
+	registerStopRecordingTool(server, windowService)
+	registerTakeScreenshotWithCursorTool(server, windowService)
 }
 
-func registerTakeScreenshotTool(server *sdkmcp.Server, service *tools.ScreenshotService) {
+func registerTakeScreenshotTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	type screenshotArgs struct{}
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        ToolName,
 		Description: ToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ screenshotArgs) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(ToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, ToolName); err != nil {
 			return nil, nil, err
 		}
 		data, err := service.TakeScreenshot(ctx)
@@ -95,13 +94,13 @@ func registerTakeScreenshotTool(server *sdkmcp.Server, service *tools.Screenshot
 	})
 }
 
-func registerTakeScreenshotPNGTool(server *sdkmcp.Server, service *tools.ScreenshotService) {
+func registerTakeScreenshotPNGTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	type takeScreenshotPNGArgs struct{}
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeScreenshotPNGToolName,
 		Description: TakeScreenshotPNGToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ takeScreenshotPNGArgs) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeScreenshotPNGToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeScreenshotPNGToolName); err != nil {
 			return nil, nil, err
 		}
 		data, err := service.TakeScreenshotPNG(ctx)
@@ -118,13 +117,13 @@ func registerTakeScreenshotPNGTool(server *sdkmcp.Server, service *tools.Screens
 	})
 }
 
-func registerListWindowsTool(server *sdkmcp.Server) {
+func registerListWindowsTool(server *sdkmcp.Server, windowService WindowService) {
 	type listWindowsArgs struct{}
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        ListWindowsToolName,
 		Description: ListWindowsToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ listWindowsArgs) (*sdkmcp.CallToolResult, any, error) {
-		windows, err := window.ListWindows(ctx)
+		windows, err := windowService.ListWindows(ctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("list windows: %w", err)
 		}
@@ -139,21 +138,21 @@ func registerListWindowsTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerScreenshotHashTool(server *sdkmcp.Server, service *tools.ScreenshotService) {
+func registerScreenshotHashTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        ScreenshotHashToolName,
 		Description: ScreenshotHashToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args struct {
 		Algorithm string `json:"algorithm,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(ScreenshotHashToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, ScreenshotHashToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.Algorithm == "" {
 			args.Algorithm = "perceptual"
 		}
 
-		img, err := service.Capture(ctx)
+		img, err := service.CaptureImage(ctx)
 		if err != nil {
 			return nil, nil, fmt.Errorf("capture screenshot: %w", err)
 		}
@@ -174,40 +173,40 @@ func registerScreenshotHashTool(server *sdkmcp.Server, service *tools.Screenshot
 	})
 }
 
-func registerFocusWindowTool(server *sdkmcp.Server) {
+func registerFocusWindowTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        FocusWindowToolName,
 		Description: FocusWindowToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args struct {
 		WindowID uint32 `json:"window_id"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(FocusWindowToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, FocusWindowToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
+		if err := windowService.FocusWindow(ctx, args.WindowID); err != nil {
 			return nil, nil, fmt.Errorf("focus window: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Window %d focused successfully", args.WindowID)), nil, nil
 	})
 }
 
-func registerTakeWindowScreenshotTool(server *sdkmcp.Server) {
+func registerTakeWindowScreenshotTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeWindowScreenshotToolName,
 		Description: TakeWindowScreenshotToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args struct {
 		WindowID uint32 `json:"window_id"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeWindowScreenshotToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeWindowScreenshotToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		data, metadata, err := window.TakeWindowScreenshot(ctx, args.WindowID, imgencode.DefaultOptions)
+		data, metadata, err := windowService.TakeWindowScreenshot(ctx, args.WindowID, imgencode.DefaultOptions)
 		if err != nil {
 			return nil, nil, fmt.Errorf("take window screenshot: %w", err)
 		}
@@ -223,20 +222,20 @@ func registerTakeWindowScreenshotTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerTakeWindowScreenshotPNGTool(server *sdkmcp.Server) {
+func registerTakeWindowScreenshotPNGTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeWindowScreenshotPNGToolName,
 		Description: TakeWindowScreenshotPNGToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args struct {
 		WindowID uint32 `json:"window_id"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeWindowScreenshotPNGToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeWindowScreenshotPNGToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		data, metadata, err := window.TakeWindowScreenshotPNG(ctx, args.WindowID)
+		data, metadata, err := windowService.TakeWindowScreenshotPNG(ctx, args.WindowID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("take window screenshot: %w", err)
 		}
@@ -252,7 +251,7 @@ func registerTakeWindowScreenshotPNGTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerTakeRegionScreenshotTool(server *sdkmcp.Server) {
+func registerTakeRegionScreenshotTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeRegionScreenshotToolName,
 		Description: TakeRegionScreenshotToolDescription,
@@ -263,14 +262,14 @@ func registerTakeRegionScreenshotTool(server *sdkmcp.Server) {
 		Height     float64 `json:"height"`
 		CoordSpace string  `json:"coord_space,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeRegionScreenshotToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeRegionScreenshotToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateRegionInput(args.Width, args.Height, args.CoordSpace); err != nil {
 			return nil, nil, err
 		}
 
-		data, metadata, err := window.TakeRegionScreenshot(ctx, args.X, args.Y, args.Width, args.Height, args.CoordSpace, imgencode.DefaultOptions)
+		data, metadata, err := windowService.TakeRegionScreenshot(ctx, args.X, args.Y, args.Width, args.Height, args.CoordSpace, imgencode.DefaultOptions)
 		if err != nil {
 			return nil, nil, fmt.Errorf("take region screenshot: %w", err)
 		}
@@ -286,7 +285,7 @@ func registerTakeRegionScreenshotTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerTakeRegionScreenshotPNGTool(server *sdkmcp.Server) {
+func registerTakeRegionScreenshotPNGTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeRegionScreenshotPNGToolName,
 		Description: TakeRegionScreenshotPNGToolDescription,
@@ -297,14 +296,14 @@ func registerTakeRegionScreenshotPNGTool(server *sdkmcp.Server) {
 		Height     float64 `json:"height"`
 		CoordSpace string  `json:"coord_space,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeRegionScreenshotPNGToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeRegionScreenshotPNGToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateRegionInput(args.Width, args.Height, args.CoordSpace); err != nil {
 			return nil, nil, err
 		}
 
-		data, metadata, err := window.TakeRegionScreenshotPNG(ctx, args.X, args.Y, args.Width, args.Height, args.CoordSpace)
+		data, metadata, err := windowService.TakeRegionScreenshotPNG(ctx, args.X, args.Y, args.Width, args.Height, args.CoordSpace)
 		if err != nil {
 			return nil, nil, fmt.Errorf("take region screenshot: %w", err)
 		}
@@ -320,7 +319,7 @@ func registerTakeRegionScreenshotPNGTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerClickTool(server *sdkmcp.Server) {
+func registerClickTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        ClickToolName,
 		Description: ClickToolDescription,
@@ -331,7 +330,7 @@ func registerClickTool(server *sdkmcp.Server) {
 		Button   string  `json:"button,omitempty"`
 		Clicks   int     `json:"clicks,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(ClickToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, ClickToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -343,35 +342,35 @@ func registerClickTool(server *sdkmcp.Server) {
 		if args.Clicks == 0 {
 			args.Clicks = 1
 		}
-		if err := window.Click(ctx, args.WindowID, args.X, args.Y, args.Button, args.Clicks); err != nil {
+		if err := windowService.Click(ctx, args.WindowID, args.X, args.Y, args.Button, args.Clicks); err != nil {
 			return nil, nil, fmt.Errorf("click: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Clicked at (%.0f, %.0f) in window %d", args.X, args.Y, args.WindowID)), nil, nil
 	})
 }
 
-func registerMouseMoveTool(server *sdkmcp.Server) {
+func registerMouseMoveTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        MouseMoveToolName,
 		Description: MouseMoveToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args mouseButtonArgs) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(MouseMoveToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, MouseMoveToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, fmt.Errorf("focus window: %w", err)
 		}
-		if err := window.MouseMove(ctx, args.WindowID, args.X, args.Y); err != nil {
+		if err := windowService.MouseMove(ctx, args.WindowID, args.X, args.Y); err != nil {
 			return nil, nil, fmt.Errorf("mouse move: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Mouse moved to (%.0f, %.0f) in window %d", args.X, args.Y, args.WindowID)), nil, nil
 	})
 }
 
-func registerDragTool(server *sdkmcp.Server) {
+func registerDragTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        DragToolName,
 		Description: DragToolDescription,
@@ -383,7 +382,7 @@ func registerDragTool(server *sdkmcp.Server) {
 		ToY      float64 `json:"to_y"`
 		Button   string  `json:"button,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(DragToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, DragToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -392,17 +391,17 @@ func registerDragTool(server *sdkmcp.Server) {
 		if args.Button == "" {
 			args.Button = "left"
 		}
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, fmt.Errorf("focus window: %w", err)
 		}
-		if err := window.Drag(ctx, args.WindowID, args.FromX, args.FromY, args.ToX, args.ToY, args.Button); err != nil {
+		if err := windowService.Drag(ctx, args.WindowID, args.FromX, args.FromY, args.ToX, args.ToY, args.Button); err != nil {
 			return nil, nil, fmt.Errorf("drag: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Dragged (%s) from (%.0f, %.0f) to (%.0f, %.0f) in window %d", args.Button, args.FromX, args.FromY, args.ToX, args.ToY, args.WindowID)), nil, nil
 	})
 }
 
-func registerScrollTool(server *sdkmcp.Server) {
+func registerScrollTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        ScrollToolName,
 		Description: ScrollToolDescription,
@@ -413,23 +412,23 @@ func registerScrollTool(server *sdkmcp.Server) {
 		DeltaX   float64 `json:"delta_x"`
 		DeltaY   float64 `json:"delta_y"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(ScrollToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, ScrollToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, fmt.Errorf("focus window: %w", err)
 		}
-		if err := window.Scroll(ctx, args.WindowID, args.X, args.Y, args.DeltaX, args.DeltaY); err != nil {
+		if err := windowService.Scroll(ctx, args.WindowID, args.X, args.Y, args.DeltaX, args.DeltaY); err != nil {
 			return nil, nil, fmt.Errorf("scroll: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Scrolled (%.0f, %.0f) at (%.0f, %.0f) in window %d", args.DeltaX, args.DeltaY, args.X, args.Y, args.WindowID)), nil, nil
 	})
 }
 
-func registerPressKeyTool(server *sdkmcp.Server, inputService *tools.InputService) {
+func registerPressKeyTool(server *sdkmcp.Server, inputService *tools.InputService, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        PressKeyToolName,
 		Description: PressKeyToolDescription,
@@ -439,7 +438,7 @@ func registerPressKeyTool(server *sdkmcp.Server, inputService *tools.InputServic
 		Modifiers  []string `json:"modifiers,omitempty"`
 		KeyPresses int      `json:"presses,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(PressKeyToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, PressKeyToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -454,7 +453,7 @@ func registerPressKeyTool(server *sdkmcp.Server, inputService *tools.InputServic
 		if args.KeyPresses < 0 {
 			return nil, nil, fmt.Errorf("presses must be >= 0")
 		}
-		if err := focusWindowAndHandleError(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, err
 		}
 		for i := 0; i < args.KeyPresses; i++ {
@@ -466,7 +465,7 @@ func registerPressKeyTool(server *sdkmcp.Server, inputService *tools.InputServic
 	})
 }
 
-func registerTypeTextTool(server *sdkmcp.Server, inputService *tools.InputService) {
+func registerTypeTextTool(server *sdkmcp.Server, inputService *tools.InputService, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TypeTextToolName,
 		Description: TypeTextToolDescription,
@@ -475,7 +474,7 @@ func registerTypeTextTool(server *sdkmcp.Server, inputService *tools.InputServic
 		Text     string `json:"text"`
 		DelayMs  int    `json:"delay_ms,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TypeTextToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TypeTextToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -484,7 +483,7 @@ func registerTypeTextTool(server *sdkmcp.Server, inputService *tools.InputServic
 		if args.Text == "" {
 			return nil, nil, fmt.Errorf("text is required")
 		}
-		if err := focusWindowAndHandleError(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, err
 		}
 		if err := inputService.TypeText(ctx, args.Text, args.DelayMs); err != nil {
@@ -494,7 +493,7 @@ func registerTypeTextTool(server *sdkmcp.Server, inputService *tools.InputServic
 	})
 }
 
-func registerKeyActionTool(server *sdkmcp.Server, toolName, description string, inputService *tools.InputService, handler keyActionHandler) {
+func registerKeyActionTool(server *sdkmcp.Server, toolName, description string, inputService *tools.InputService, handler keyActionHandler, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        toolName,
 		Description: description,
@@ -503,7 +502,7 @@ func registerKeyActionTool(server *sdkmcp.Server, toolName, description string, 
 		Key       string   `json:"key"`
 		Modifiers []string `json:"modifiers,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(toolName); err != nil {
+		if err := ensureWindowPermissions(windowService, toolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -512,7 +511,7 @@ func registerKeyActionTool(server *sdkmcp.Server, toolName, description string, 
 		if args.Key == "" {
 			return nil, nil, fmt.Errorf("key is required")
 		}
-		if err := focusWindowAndHandleError(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, err
 		}
 		if err := handler(ctx, inputService, args.Key, args.Modifiers); err != nil {
@@ -536,7 +535,7 @@ func performKeyUp(ctx context.Context, inputService *tools.InputService, key str
 	return nil
 }
 
-func registerWaitForPixelTool(server *sdkmcp.Server) {
+func registerWaitForPixelTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForPixelToolName,
 		Description: WaitForPixelToolDescription,
@@ -549,20 +548,20 @@ func registerWaitForPixelTool(server *sdkmcp.Server) {
 		TimeoutMs      int      `json:"timeout_ms,omitempty"`
 		PollIntervalMs int      `json:"poll_interval_ms,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(WaitForPixelToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, WaitForPixelToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		if err := window.WaitForPixel(ctx, args.WindowID, args.X, args.Y, args.RGBA, args.Tolerance, args.TimeoutMs, args.PollIntervalMs); err != nil {
+		if err := windowService.WaitForPixel(ctx, args.WindowID, args.X, args.Y, args.RGBA, args.Tolerance, args.TimeoutMs, args.PollIntervalMs); err != nil {
 			return nil, nil, fmt.Errorf("wait for pixel: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Pixel at (%.0f, %.0f) matched color %v in window %d", args.X, args.Y, args.RGBA, args.WindowID)), nil, nil
 	})
 }
 
-func registerWaitForRegionStableTool(server *sdkmcp.Server) {
+func registerWaitForRegionStableTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForRegionStableToolName,
 		Description: WaitForRegionStableToolDescription,
@@ -576,23 +575,23 @@ func registerWaitForRegionStableTool(server *sdkmcp.Server) {
 		TimeoutMs      int     `json:"timeout_ms,omitempty"`
 		PollIntervalMs int     `json:"poll_interval_ms,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(WaitForRegionStableToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, WaitForRegionStableToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
 			return nil, nil, err
 		}
-		if err := validatePositiveDimensions(args.Width, args.Height); err != nil {
+		if err := validateRegionInput(args.Width, args.Height, "points"); err != nil {
 			return nil, nil, err
 		}
-		if err := window.WaitForRegionStable(ctx, args.WindowID, args.X, args.Y, args.Width, args.Height, args.StableCount, args.TimeoutMs, args.PollIntervalMs); err != nil {
+		if err := windowService.WaitForRegionStable(ctx, args.WindowID, args.X, args.Y, args.Width, args.Height, args.StableCount, args.TimeoutMs, args.PollIntervalMs); err != nil {
 			return nil, nil, fmt.Errorf("wait for region stable: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Region (%.0f, %.0f, %.0f, %.0f) stabilized in window %d", args.X, args.Y, args.Width, args.Height, args.WindowID)), nil, nil
 	})
 }
 
-func registerLaunchAppTool(server *sdkmcp.Server) {
+func registerLaunchAppTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        LaunchAppToolName,
 		Description: LaunchAppToolDescription,
@@ -602,14 +601,14 @@ func registerLaunchAppTool(server *sdkmcp.Server) {
 		if args.AppName == "" {
 			return nil, nil, fmt.Errorf("app_name is required")
 		}
-		if err := window.LaunchApp(ctx, args.AppName); err != nil {
+		if err := windowService.LaunchApp(ctx, args.AppName); err != nil {
 			return nil, nil, fmt.Errorf("launch app: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Launched app %q", args.AppName)), nil, nil
 	})
 }
 
-func registerQuitAppTool(server *sdkmcp.Server) {
+func registerQuitAppTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        QuitAppToolName,
 		Description: QuitAppToolDescription,
@@ -619,14 +618,14 @@ func registerQuitAppTool(server *sdkmcp.Server) {
 		if args.AppName == "" {
 			return nil, nil, fmt.Errorf("app_name is required")
 		}
-		if err := window.QuitApp(ctx, args.AppName); err != nil {
+		if err := windowService.QuitApp(ctx, args.AppName); err != nil {
 			return nil, nil, fmt.Errorf("quit app: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Quit app %q", args.AppName)), nil, nil
 	})
 }
 
-func registerWaitForProcessTool(server *sdkmcp.Server) {
+func registerWaitForProcessTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForProcessToolName,
 		Description: WaitForProcessToolDescription,
@@ -638,14 +637,14 @@ func registerWaitForProcessTool(server *sdkmcp.Server) {
 		if args.ProcessName == "" {
 			return nil, nil, fmt.Errorf("process_name is required")
 		}
-		if err := window.WaitForProcess(ctx, args.ProcessName, args.TimeoutMs, args.PollIntervalMs); err != nil {
+		if err := windowService.WaitForProcess(ctx, args.ProcessName, args.TimeoutMs, args.PollIntervalMs); err != nil {
 			return nil, nil, fmt.Errorf("wait for process: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Process %q is running", args.ProcessName)), nil, nil
 	})
 }
 
-func registerKillProcessTool(server *sdkmcp.Server) {
+func registerKillProcessTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        KillProcessToolName,
 		Description: KillProcessToolDescription,
@@ -655,7 +654,7 @@ func registerKillProcessTool(server *sdkmcp.Server) {
 		if args.ProcessName == "" {
 			return nil, nil, fmt.Errorf("process_name is required")
 		}
-		if err := window.KillProcess(ctx, args.ProcessName); err != nil {
+		if err := windowService.KillProcess(ctx, args.ProcessName); err != nil {
 			return nil, nil, fmt.Errorf("kill process: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Killed process %q", args.ProcessName)), nil, nil
@@ -697,7 +696,7 @@ func registerGetClipboardTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerWaitForImageMatchTool(server *sdkmcp.Server) {
+func registerWaitForImageMatchTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForImageMatchToolName,
 		Description: WaitForImageMatchToolDescription,
@@ -708,7 +707,7 @@ func registerWaitForImageMatchTool(server *sdkmcp.Server) {
 		TimeoutMs      int     `json:"timeout_ms,omitempty"`
 		PollIntervalMs int     `json:"poll_interval_ms,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(WaitForImageMatchToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, WaitForImageMatchToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.TemplateImage == "" {
@@ -735,7 +734,7 @@ func registerWaitForImageMatchTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerFindImageMatchesTool(server *sdkmcp.Server) {
+func registerFindImageMatchesTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        FindImageMatchesToolName,
 		Description: FindImageMatchesToolDescription,
@@ -744,7 +743,7 @@ func registerFindImageMatchesTool(server *sdkmcp.Server) {
 		TemplateImage string  `json:"template_image"`
 		Threshold     float64 `json:"threshold,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(FindImageMatchesToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, FindImageMatchesToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.TemplateImage == "" {
@@ -769,7 +768,7 @@ func registerFindImageMatchesTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerCompareImagesTool(server *sdkmcp.Server) {
+func registerCompareImagesTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        CompareImagesToolName,
 		Description: CompareImagesToolDescription,
@@ -778,7 +777,7 @@ func registerCompareImagesTool(server *sdkmcp.Server) {
 		Image2    string  `json:"image2"`
 		Threshold float64 `json:"threshold,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(CompareImagesToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, CompareImagesToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.Image1 == "" || args.Image2 == "" {
@@ -800,7 +799,7 @@ func registerCompareImagesTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerAssertScreenshotMatchesFixtureTool(server *sdkmcp.Server) {
+func registerAssertScreenshotMatchesFixtureTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        AssertScreenshotMatchesFixtureToolName,
 		Description: AssertScreenshotMatchesFixtureToolDescription,
@@ -810,7 +809,7 @@ func registerAssertScreenshotMatchesFixtureTool(server *sdkmcp.Server) {
 		Threshold   float64      `json:"threshold,omitempty"`
 		MaskRegions []MaskRegion `json:"mask_regions,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(AssertScreenshotMatchesFixtureToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, AssertScreenshotMatchesFixtureToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -835,7 +834,7 @@ func registerAssertScreenshotMatchesFixtureTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerWaitForTextTool(server *sdkmcp.Server) {
+func registerWaitForTextTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForTextToolName,
 		Description: WaitForTextToolDescription,
@@ -847,6 +846,9 @@ func registerWaitForTextTool(server *sdkmcp.Server) {
 	}) (*sdkmcp.CallToolResult, any, error) {
 		if args.Text == "" {
 			return nil, nil, fmt.Errorf("text is required")
+		}
+		if err := ensureWindowPermissions(windowService, WaitForTextToolName); err != nil {
+			return nil, nil, err
 		}
 		found, err := waitForText(ctx, args.WindowID, args.Text, args.TimeoutMs, args.PollIntervalMs)
 		if err != nil {
@@ -860,7 +862,7 @@ func registerWaitForTextTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerRestartAppTool(server *sdkmcp.Server) {
+func registerRestartAppTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        RestartAppToolName,
 		Description: RestartAppToolDescription,
@@ -870,6 +872,9 @@ func registerRestartAppTool(server *sdkmcp.Server) {
 		if args.AppName == "" {
 			return nil, nil, fmt.Errorf("app_name is required")
 		}
+		if err := ensureWindowPermissions(windowService, RestartAppToolName); err != nil {
+			return nil, nil, err
+		}
 		if err := restartApp(ctx, args.AppName); err != nil {
 			return nil, nil, fmt.Errorf("restart app: %w", err)
 		}
@@ -877,7 +882,7 @@ func registerRestartAppTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerStartRecordingTool(server *sdkmcp.Server) {
+func registerStartRecordingTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        StartRecordingToolName,
 		Description: StartRecordingToolDescription,
@@ -886,7 +891,7 @@ func registerStartRecordingTool(server *sdkmcp.Server) {
 		FPS      int    `json:"fps,omitempty"`
 		Format   string `json:"format,omitempty"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(StartRecordingToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, StartRecordingToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.FPS == 0 {
@@ -910,14 +915,14 @@ func registerStartRecordingTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerStopRecordingTool(server *sdkmcp.Server) {
+func registerStopRecordingTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        StopRecordingToolName,
 		Description: StopRecordingToolDescription,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args struct {
 		RecordingID string `json:"recording_id"`
 	}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(StopRecordingToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, StopRecordingToolName); err != nil {
 			return nil, nil, err
 		}
 		if args.RecordingID == "" {
@@ -939,12 +944,12 @@ func registerStopRecordingTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerTakeScreenshotWithCursorTool(server *sdkmcp.Server) {
+func registerTakeScreenshotWithCursorTool(server *sdkmcp.Server, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeScreenshotWithCursorToolName,
 		Description: TakeScreenshotWithCursorToolDescription,
 	}, func(_ context.Context, _ *sdkmcp.CallToolRequest, _ struct{}) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(TakeScreenshotWithCursorToolName); err != nil {
+		if err := ensureWindowPermissions(windowService, TakeScreenshotWithCursorToolName); err != nil {
 			return nil, nil, err
 		}
 		if err := takeScreenshotWithCursor(); err != nil {
@@ -955,12 +960,12 @@ func registerTakeScreenshotWithCursorTool(server *sdkmcp.Server) {
 	})
 }
 
-func registerMouseButtonTool(server *sdkmcp.Server, toolName, description string, verb string, action mouseButtonAction) {
+func registerMouseButtonTool(server *sdkmcp.Server, toolName, description string, verb string, action mouseButtonAction, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        toolName,
 		Description: description,
 	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args mouseButtonArgs) (*sdkmcp.CallToolResult, any, error) {
-		if err := ensureWindowPermissions(toolName); err != nil {
+		if err := ensureWindowPermissions(windowService, toolName); err != nil {
 			return nil, nil, err
 		}
 		if err := validateWindowID(args.WindowID); err != nil {
@@ -969,7 +974,7 @@ func registerMouseButtonTool(server *sdkmcp.Server, toolName, description string
 		if args.Button == "" {
 			args.Button = "left"
 		}
-		if err := window.FocusWindow(ctx, args.WindowID); err != nil {
+		if err := focusWindowAndHandleError(ctx, windowService, args.WindowID); err != nil {
 			return nil, nil, fmt.Errorf("focus window: %w", err)
 		}
 		if err := action(ctx, args.WindowID, args.X, args.Y, args.Button); err != nil {
@@ -979,15 +984,15 @@ func registerMouseButtonTool(server *sdkmcp.Server, toolName, description string
 	})
 }
 
-func focusWindowAndHandleError(ctx context.Context, windowID uint32) error {
-	if err := window.FocusWindow(ctx, windowID); err != nil {
+func focusWindowAndHandleError(ctx context.Context, windowService WindowService, windowID uint32) error {
+	if err := windowService.FocusWindow(ctx, windowID); err != nil {
 		return fmt.Errorf("focus window: %w", err)
 	}
 	return nil
 }
 
-func ensureWindowPermissions(toolName string) error {
-	if err := window.EnsureAutomationPermissions(toolName); err != nil {
+func ensureWindowPermissions(windowService WindowService, toolName string) error {
+	if err := windowService.EnsureAutomationPermissions(toolName); err != nil {
 		return fmt.Errorf("%s: %w", toolName, err)
 	}
 	return nil

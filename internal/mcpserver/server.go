@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"image"
 	"net/http"
 	"time"
 
@@ -12,8 +13,14 @@ import (
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/tools"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/version"
-	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/window"
 )
+
+// ScreenshotService defines MCP-facing screenshot capture dependencies.
+type ScreenshotService interface {
+	CaptureImage(context.Context) (image.Image, error)
+	TakeScreenshot(context.Context) ([]byte, error)
+	TakeScreenshotPNG(context.Context) ([]byte, error)
+}
 
 // Tool names and descriptions are exported for tests and integrations.
 const (
@@ -173,12 +180,17 @@ type Config struct {
 	Version           string
 	ExperimentalTools bool
 	InputService      *tools.InputService
+	WindowService     WindowService
 }
 
 // NewServer creates and configures the MCP server with all tools.
-func NewServer(service *tools.ScreenshotService, cfg Config) *sdkmcp.Server {
+func NewServer(service ScreenshotService, cfg Config) *sdkmcp.Server {
 	if service == nil {
 		service = tools.NewScreenshotService()
+	}
+	windowService := cfg.WindowService
+	if windowService == nil {
+		windowService = newWindowService()
 	}
 	inputService := cfg.InputService
 	if inputService == nil {
@@ -199,15 +211,15 @@ func NewServer(service *tools.ScreenshotService, cfg Config) *sdkmcp.Server {
 		nil,
 	)
 
-	registerScreenshotTools(server, service)
-	if window.SupportsWindowTools() {
-		registerWindowDiscoveryTools(server, service)
-		registerWindowTools(server)
-		registerInputTools(server, inputService)
-		registerSystemTools(server)
-		registerImageUtilities(server)
+	registerScreenshotTools(server, service, windowService)
+	if windowService.SupportsWindowTools() {
+		registerWindowDiscoveryTools(server, service, windowService)
+		registerWindowTools(server, windowService)
+		registerInputTools(server, inputService, windowService)
+		registerSystemTools(server, windowService)
+		registerImageUtilities(server, windowService)
 		if cfg.ExperimentalTools {
-			registerExperimentalTools(server)
+			registerExperimentalTools(server, windowService)
 		}
 	}
 
