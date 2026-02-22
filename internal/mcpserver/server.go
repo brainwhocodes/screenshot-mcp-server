@@ -220,7 +220,7 @@ func NewServer(service ScreenshotService, cfg Config) *sdkmcp.Server {
 		registerSystemTools(server, windowService)
 		registerImageUtilities(server, windowService)
 		if cfg.ExperimentalTools {
-			registerExperimentalTools(server, windowService, recordingState)
+			registerExperimentalTools(server, service, windowService, recordingState)
 		}
 	}
 

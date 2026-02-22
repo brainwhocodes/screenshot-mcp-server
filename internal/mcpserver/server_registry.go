@@ -63,12 +63,12 @@ func registerImageUtilities(server *sdkmcp.Server, windowService WindowService) 
 	registerAssertScreenshotMatchesFixtureTool(server, windowService)
 }
 
-func registerExperimentalTools(server *sdkmcp.Server, windowService WindowService, recordingState *recordingState) {
-	registerWaitForTextTool(server, windowService)
+func registerExperimentalTools(server *sdkmcp.Server, service ScreenshotService, windowService WindowService, recordingState *recordingState) {
+	registerWaitForTextTool(server, service, windowService)
 	registerRestartAppTool(server, windowService)
 	registerStartRecordingTool(server, windowService, recordingState)
 	registerStopRecordingTool(server, windowService, recordingState)
-	registerTakeScreenshotWithCursorTool(server, windowService)
+	registerTakeScreenshotWithCursorTool(server, service, windowService)
 }
 
 func registerTakeScreenshotTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
@@ -745,7 +745,7 @@ func registerAssertScreenshotMatchesFixtureTool(server *sdkmcp.Server, windowSer
 	})
 }
 
-func registerWaitForTextTool(server *sdkmcp.Server, windowService WindowService) {
+func registerWaitForTextTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        WaitForTextToolName,
 		Description: WaitForTextToolDescription,
@@ -756,7 +756,7 @@ func registerWaitForTextTool(server *sdkmcp.Server, windowService WindowService)
 		if err := ensureWindowPermissions(windowService, WaitForTextToolName); err != nil {
 			return nil, nil, err
 		}
-		found, err := waitForText(ctx, args.WindowID, args.Text, args.TimeoutMs, args.PollIntervalMs)
+		found, err := waitForText(ctx, service, args.WindowID, args.Text, args.TimeoutMs, args.PollIntervalMs)
 		if err != nil {
 			return nil, nil, fmt.Errorf("wait for text: %w", err)
 		}
@@ -826,34 +826,44 @@ func registerStopRecordingTool(server *sdkmcp.Server, windowService WindowServic
 		if args.RecordingID == "" {
 			return nil, nil, fmt.Errorf("recording_id is required")
 		}
-		if err := stopRecording(ctx, recordingState, args.RecordingID); err != nil {
+		videoPath, warning, err := stopRecording(ctx, recordingState, args.RecordingID)
+		if err != nil {
 			return nil, nil, fmt.Errorf("stop recording: %w", err)
 		}
-		videoPath := ""
-		result, err := tools.ToolResultFromJSON(map[string]string{
+		payload := map[string]interface{}{
 			"recording_id": args.RecordingID,
 			"video_path":   videoPath,
 			"status":       "stopped",
-		})
+		}
+		if warning != "" {
+			payload["warning"] = warning
+		}
+		result, err := tools.ToolResultFromJSON(payload)
 		if err != nil {
-			return nil, nil, fmt.Errorf("stop recording: %w", err)
+			return nil, nil, fmt.Errorf("marshal result: %w", err)
 		}
 		return result, nil, nil
 	})
 }
 
-func registerTakeScreenshotWithCursorTool(server *sdkmcp.Server, windowService WindowService) {
+func registerTakeScreenshotWithCursorTool(server *sdkmcp.Server, service ScreenshotService, windowService WindowService) {
 	sdkmcp.AddTool(server, &sdkmcp.Tool{
 		Name:        TakeScreenshotWithCursorToolName,
 		Description: TakeScreenshotWithCursorToolDescription,
-	}, func(_ context.Context, _ *sdkmcp.CallToolRequest, _ emptyArgs) (*sdkmcp.CallToolResult, any, error) {
+	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, _ emptyArgs) (*sdkmcp.CallToolResult, any, error) {
 		if err := ensureWindowPermissions(windowService, TakeScreenshotWithCursorToolName); err != nil {
 			return nil, nil, err
 		}
-		if err := takeScreenshotWithCursor(); err != nil {
+		data, cursorCaptured, err := takeScreenshotWithCursor(ctx, service)
+		if err != nil {
 			return nil, nil, fmt.Errorf("take screenshot with cursor: %w", err)
 		}
-		result := tools.ToolResultFromText("Cursor-aware screenshots are not yet implemented")
+		result, err := tools.ToolResultFromJSONWithImage(map[string]bool{
+			"cursor_captured": cursorCaptured,
+		}, data, "image/jpeg")
+		if err != nil {
+			return nil, nil, fmt.Errorf("build result: %w", err)
+		}
 		return result, nil, nil
 	})
 }
