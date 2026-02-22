@@ -2,6 +2,29 @@
 
 Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. This file is for code health, maintainability, and correctness refactors.
 
+## Remaining TODO
+- [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
+- [ ] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
+- [ ] Reduce cyclomatic complexity in core handlers (still pending on `internal/mcpserver/server.go`::`NewServer` and MCP registration flow).
+- [ ] Split long functions (`internal/mcpserver/server.go`::`NewServer`, `internal/mcpserver/image_compare.go`::`assertScreenshotMatchesFixture`, several `internal/window/window.go` screenshot/input helpers).
+- [ ] Reduce cognitive complexity (`internal/mcpserver/server.go`::`NewServer`).
+- [x] Standardize error wrapping at package boundaries (especially MCP handlers and OS integration helpers).
+- [x] Define pass-through error policy for `errors.Is`/`errors.As` versus wrapped context errors.
+- [x] Address integer-cast warnings in hashing and pixel conversion code (`G115`) with explicit bounds checks.
+- [x] Document accepted `gosec` suppressions in code comments where test-only behavior is intentional.
+- [x] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
+- [ ] Split `internal/mcpserver/server.go` (~1338 LOC) into per-tool registration files.
+- [ ] Split `internal/window/window.go` (~1081 LOC) into focused input/list/focus/screenshot/permission files.
+- [ ] Move long helper implementations out of MCP wiring code (keep `NewServer` mostly “register tools + call services”).
+- [ ] Centralize permission checks + messaging (screen recording / accessibility) so all tools fail consistently.
+- [ ] Standardize error shapes (error codes + actionable messages) for reliable agent behavior.
+- [x] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
+- [x] Add explicit timeouts for OS calls (`osascript`, process management) to avoid hangs during long test runs.
+- [x] Avoid encode→decode loops in polling tools (pixel/region waiters) via raw image sampling path.
+- [x] Make screenshot hashing explicit and stable (cursor inclusion, window vs full-screen target).
+- [x] Add deterministic “artifacts directory” behavior (server-side allowlist + consistent file naming).
+- [x] Add deterministic fixture strategy for image-based tests (stable codec options and metadata stripping).
+
 ## Priority Buckets
 
 ### P0 (Do First: correctness, safety, CI signal)
@@ -35,7 +58,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Expand test hardening:
   - [x] add `-race` test pass,
 - [x] add coverage gates for critical flows,
-  - [ ] improve deterministic image fixture strategy.
+- [x] improve deterministic image fixture strategy.
 - [x] Improve docs and consistency:
   - [x] tool support matrix by OS/permissions,
   - [x] keep README tool list synced (prefer generated table).
@@ -105,7 +128,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Duplicate logic hotspots
 
 - [x] Run `golangci-lint run --enable-only=dupl`.
-- [ ] Deduplicate common window + coordinate mapping logic:
+- [x] Deduplicate common window + coordinate mapping logic:
   - [x] `internal/window/window.go`: `MouseDown` / `MouseUp` share large duplicated blocks (extract helper).
 
 ### Placeholder APIs
@@ -131,8 +154,8 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Error-wrapping consistency
 
 - [x] Run `golangci-lint run --enable-only=wrapcheck`.
-- [ ] Standardize error wrapping at package boundaries (especially MCP handlers and OS integration helpers).
-- [ ] Define where pass-through errors are allowed (`errors.Is`/`errors.As` cases) vs where context must be added.
+- [x] Standardize error wrapping at package boundaries (especially MCP handlers and OS integration helpers).
+- [x] Define where pass-through errors are allowed (`errors.Is`/`errors.As` cases) vs where context must be added.
 
 ### Context propagation
 
@@ -148,15 +171,15 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 - [x] Review all `exec.CommandContext` call sites:
   - [x] validate/sanitize user-controlled arguments,
   - [x] centralize script generation/escaping for AppleScript.
-- [ ] Address integer-cast warnings in hashing and pixel conversion code (`G115`) with explicit bounds checks.
-- [ ] Document accepted `gosec` suppressions in code comments where test-only behavior is intentional.
+- [x] Address integer-cast warnings in hashing and pixel conversion code (`G115`) with explicit bounds checks.
+- [x] Document accepted `gosec` suppressions in code comments where test-only behavior is intentional.
 
 ### API docs + naming consistency
 
 - [x] Run `golangci-lint run --enable-only=revive`.
 - [x] Add package comments where missing (`cmd/agent`, `internal/testutil`, `internal/version`).
 - [x] Add/normalize comments for exported API types and methods in `internal/agent`.
-- [ ] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
+- [x] Remove avoidable built-in shadowing (e.g., `max` parameter name in `internal/window/window.go`).
 - [ ] Normalize style issues called out by revive that improve readability without churn.
 
 ## Second-pass refactor ideas
@@ -187,14 +210,14 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 ### Concurrency + state
 
-- [ ] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
-- [ ] Add explicit timeouts for OS calls (`osascript`, process management) to avoid hangs during long test runs.
+- [x] Remove or encapsulate package-level mutable state (e.g., recording state maps); guard with mutexes when state is required.
+- [x] Add explicit timeouts for OS calls (`osascript`, process management) to avoid hangs during long test runs.
 
 ### Performance + determinism
 
-- [ ] Avoid encode→decode loops in polling tools (e.g., pixel/region waiters): expose a raw-image path for sampling and hashing.
-- [ ] Make screenshot hashing explicit and stable (what it hashes, whether cursor included, window vs full screen).
-- [ ] Add deterministic “artifacts directory” behavior (server-side allowlist + consistent file naming).
+- [x] Avoid encode→decode loops in polling tools (e.g., pixel/region waiters): expose a raw-image path for sampling and hashing.
+- [x] Make screenshot hashing explicit and stable (what it hashes, whether cursor included, window vs full screen).
+- [x] Add deterministic “artifacts directory” behavior (server-side allowlist + consistent file naming).
 
 ### Docs + consistency
 
@@ -221,4 +244,4 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 
 - [x] Add race test pass (`go test -race`) for packages with mutable process/global state.
 - [x] Add coverage gates for critical flows (window targeting, coordinate mapping, click safety).
-- [ ] Add deterministic fixture strategy for image-based tests (stable codec options and metadata stripping where needed).
+- [x] Add deterministic fixture strategy for image-based tests (stable codec options and metadata stripping where needed).

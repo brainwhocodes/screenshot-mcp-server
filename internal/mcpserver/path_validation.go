@@ -4,15 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 var (
 	allowedRunDir    string
 	allowedRunDirMu  sync.RWMutex
 	allowlistEnabled bool
+	artifactSeq      uint64
 )
+
+var artifactNameSanitizer = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 
 // SetAllowedRunDirectory sets the directory where screenshot and fixture file
 // operations are allowed.
@@ -85,4 +90,48 @@ func ValidatePathAllowed(path string) error {
 		return fmt.Errorf("path %q is not within allowed run directory %q", path, allowed)
 	}
 	return nil
+}
+
+// ArtifactPath returns a deterministic artifact path with optional allowlist enforcement.
+func ArtifactPath(prefix, ext string) (string, error) {
+	allowedRunDirMu.RLock()
+	allowed := allowedRunDir
+	enabled := allowlistEnabled
+	allowedRunDirMu.RUnlock()
+
+	name := makeArtifactFileName(prefix, ext)
+	if !enabled {
+		return filepath.Join(os.TempDir(), name), nil
+	}
+	return filepath.Join(allowed, name), nil
+}
+
+// CreateArtifactFile creates a deterministic artifact file with secure permissions.
+func CreateArtifactFile(prefix, ext string) (*os.File, error) {
+	path, err := ArtifactPath(prefix, ext)
+	if err != nil {
+		return nil, err
+	}
+
+	// Accepted G304 suppression: artifact file paths are derived from deterministic
+	// service-controlled components and validated by set run-directory policy.
+	// #nosec G304
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("create artifact file %q: %w", path, err)
+	}
+	return file, nil
+}
+
+func makeArtifactFileName(prefix, ext string) string {
+	safePrefix := artifactNameSanitizer.ReplaceAllString(prefix, "-")
+	if safePrefix == "" {
+		safePrefix = "artifact"
+	}
+	seq := atomic.AddUint64(&artifactSeq, 1)
+	if ext == "" {
+		ext = "tmp"
+	}
+	ext = strings.TrimPrefix(ext, ".")
+	return fmt.Sprintf("screenshot-mcp-server-%s-%06d.%s", safePrefix, seq, ext)
 }
