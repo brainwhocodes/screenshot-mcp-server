@@ -69,7 +69,8 @@ func TestTakeScreenshotToFileWithTransport_InMemory(t *testing.T) {
 		t.Fatalf("TakeScreenshotToFileWithTransport failed: %v", err)
 	}
 
-	written, err := os.ReadFile(outputPath)
+		// #nosec G304 -- test-only fixture output path is managed by t.TempDir().
+		written, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatalf("read output file: %v", err)
 	}

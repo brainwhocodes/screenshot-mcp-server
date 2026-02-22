@@ -1,3 +1,4 @@
+// Package client contains MCP client helpers for the screenshot server.
 package client
 
 import (
@@ -6,11 +7,13 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/mcpserver"
+	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/safeexec"
 	"github.com/codingthefuturewithai/screenshot_mcp_server/internal/version"
 )
 
@@ -59,7 +62,20 @@ func TakeScreenshot(ctx context.Context, cfg Config) ([]byte, error) {
 		cfg = DefaultConfig()
 	}
 
-	cmd := exec.CommandContext(ctx, cfg.ServerCommand, cfg.ServerArgs...)
+	if strings.ContainsAny(cfg.ServerCommand, "\x00") {
+		return nil, fmt.Errorf("server command contains invalid characters")
+	}
+
+	serverCommand := filepath.Clean(cfg.ServerCommand)
+	if _, err := exec.LookPath(serverCommand); err != nil {
+		return nil, fmt.Errorf("resolve server command %q: %w", serverCommand, err)
+	}
+
+	cmd, cancel, err := safeexec.CommandContext(ctx, serverCommand, cfg.ServerArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("build server command: %w", err)
+	}
+	defer cancel()
 	transport := &sdkmcp.CommandTransport{Command: cmd}
 	return TakeScreenshotWithTransport(ctx, transport)
 }
@@ -82,7 +98,9 @@ func TakeScreenshotWithTransport(ctx context.Context, transport sdkmcp.Transport
 	if err != nil {
 		return nil, fmt.Errorf("connect to server: %w", err)
 	}
-	defer session.Close()
+	defer func() {
+		_ = session.Close()
+	}()
 
 	result, err := session.CallTool(ctx, &sdkmcp.CallToolParams{Name: mcpserver.ToolName})
 	if err != nil {
@@ -108,7 +126,7 @@ func ExtractJPEG(result *sdkmcp.CallToolResult) ([]byte, error) {
 	}
 	if result.IsError {
 		if err := result.GetError(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("tool returned error: %w", err)
 		}
 		return nil, fmt.Errorf("tool returned error")
 	}
@@ -131,7 +149,7 @@ func ExtractJPEG(result *sdkmcp.CallToolResult) ([]byte, error) {
 }
 
 func writeOutput(outputPath string, data []byte) error {
-	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
+	if err := os.WriteFile(outputPath, data, 0o600); err != nil {
 		return fmt.Errorf("write output file: %w", err)
 	}
 	return nil

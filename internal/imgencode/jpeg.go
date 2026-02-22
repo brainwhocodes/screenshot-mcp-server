@@ -1,3 +1,4 @@
+// Package imgencode provides helpers for encoding screenshots and window images.
 package imgencode
 
 import (

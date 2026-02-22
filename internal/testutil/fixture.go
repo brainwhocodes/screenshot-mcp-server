@@ -1,3 +1,4 @@
+// Package testutil contains deterministic fixture helpers for integration tests.
 package testutil
 
 import (
@@ -13,12 +14,12 @@ func WriteFixtureJPEG(t *testing.T) string {
 	t.Helper()
 
 	img := image.NewRGBA(image.Rect(0, 0, 32, 32))
-	for y := 0; y < 32; y++ {
-		for x := 0; x < 32; x++ {
-			img.SetRGBA(x, y, color.RGBA{
-				R: uint8(x * 8),
-				G: uint8(y * 8),
-				B: uint8((x + y) * 4),
+	for y := byte(0); y < 32; y++ {
+		for x := byte(0); x < 32; x++ {
+			img.SetRGBA(int(x), int(y), color.RGBA{
+				R: x * 8,
+				G: y * 8,
+				B: (x + y) * 4,
 				A: 255,
 			})
 		}
@@ -28,7 +29,9 @@ func WriteFixtureJPEG(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("create fixture file: %v", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	if err := jpeg.Encode(file, img, &jpeg.Options{Quality: 80}); err != nil {
 		t.Fatalf("encode fixture jpeg: %v", err)

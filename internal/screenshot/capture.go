@@ -1,3 +1,4 @@
+// Package screenshot provides a thin wrapper over active screen capture backends.
 package screenshot
 
 import (

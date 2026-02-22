@@ -5,18 +5,17 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
-	"math/rand"
 	"testing"
 )
 
 func TestEncodeJPEG_ValidJPEG(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 64, 64))
-	for y := 0; y < 64; y++ {
-		for x := 0; x < 64; x++ {
-			img.SetRGBA(x, y, color.RGBA{
-				R: uint8(x * 4),
-				G: uint8(y * 4),
-				B: uint8((x + y) * 2),
+	for y := byte(0); y < 64; y++ {
+		for x := byte(0); x < 64; x++ {
+			img.SetRGBA(int(x), int(y), color.RGBA{
+				R: x * 4,
+				G: y * 4,
+				B: (x + y) * 2,
 				A: 255,
 			})
 		}
@@ -35,19 +34,20 @@ func TestEncodeJPEG_ValidJPEG(t *testing.T) {
 	}
 }
 
-func TestEncodeJPEG_SizeReductionWithMaxBytes(t *testing.T) {
-	img := image.NewRGBA(image.Rect(0, 0, 512, 512))
-	rng := rand.New(rand.NewSource(42))
-	for y := 0; y < 512; y++ {
-		for x := 0; x < 512; x++ {
-			img.SetRGBA(x, y, color.RGBA{
-				R: uint8(rng.Intn(256)),
-				G: uint8(rng.Intn(256)),
-				B: uint8(rng.Intn(256)),
-				A: 255,
-			})
+	func TestEncodeJPEG_SizeReductionWithMaxBytes(t *testing.T) {
+		img := image.NewRGBA(image.Rect(0, 0, 512, 512))
+		var lcg uint32 = 42
+		for y := 0; y < 512; y++ {
+			for x := 0; x < 512; x++ {
+				lcg = lcg*1664525 + 1013904223
+				img.SetRGBA(x, y, color.RGBA{
+					R: byte(lcg >> 24),
+					G: byte(lcg >> 16),
+					B: byte(lcg >> 8),
+					A: 255,
+				})
+			}
 		}
-	}
 
 	baseline, err := EncodeJPEG(img, Options{Quality: 95})
 	if err != nil {
