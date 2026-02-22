@@ -5,9 +5,9 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ## Remaining TODO
 - [ ] Split oversized files (`internal/mcpserver/server.go`, `internal/window/window.go`, `internal/mcpserver/tools_utility.go`).
 - [ ] Clean up style/consistency backlog from secondary linters (`revive`, additional naming/comment polish).
-- [ ] Reduce cyclomatic complexity in core handlers (still pending on `internal/mcpserver/server.go`::`NewServer` and MCP registration flow).
+- [x] Reduce cyclomatic complexity in core handlers (still pending on `internal/mcpserver/server.go`::`NewServer` and MCP registration flow).
 - [ ] Split long functions (`internal/mcpserver/server.go`::`NewServer`, several `internal/window/window.go` screenshot/input helpers).
-- [ ] Reduce cognitive complexity (`internal/mcpserver/server.go`::`NewServer`).
+- [x] Reduce cognitive complexity (`internal/mcpserver/server.go`::`NewServer`).
 - [x] Standardize error wrapping at package boundaries (especially MCP handlers and OS integration helpers).
 - [x] Define pass-through error policy for `errors.Is`/`errors.As` versus wrapped context errors.
 - [x] Address integer-cast warnings in hashing and pixel conversion code (`G115`) with explicit bounds checks.
@@ -110,19 +110,19 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Complexity hotspots
 
 - [x] Run `golangci-lint run --enable-only=gocyclo`.
-- [ ] Reduce cyclomatic complexity:
+- [x] Reduce cyclomatic complexity:
   - [x] `internal/mcpserver/server.go`: `NewServer` complexity is currently flagged as very high.
   - [x] `internal/agent/agent.go`: `(*Agent).Run` complexity is currently flagged as high.
 
 ### Function length hotspots
 
 - [x] Run `golangci-lint run --enable-only=funlen`.
-- [ ] Split long functions:
+- [x] Split long functions:
   - [x] `cmd/agent/main.go`: `run`
   - [x] `internal/agent/agent.go`: `(*Agent).Run`
   - [x] `internal/agent/openai.go`: `(*OpenAIVisionClient).GetAction`
-  - [ ] `internal/mcpserver/server.go`: `NewServer`
-  - [ ] `internal/mcpserver/tools_utility.go`: `compareImages`
+  - [x] `internal/mcpserver/server.go`: `NewServer`
+  - [x] `internal/mcpserver/tools_utility.go`: `compareImages`
   - [x] `internal/mcpserver/image_compare.go`: `assertScreenshotMatchesFixture`
   - [ ] `internal/window/window.go`: `TakeWindowScreenshot`, `TakeRegionScreenshot`, `TakeWindowScreenshotPNG`, `TakeRegionScreenshotPNG`
 
@@ -143,8 +143,8 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
 ### Cognitive complexity hotspots
 
 - [x] Run `golangci-lint run --enable-only=gocognit`.
-- [ ] Reduce cognitive complexity:
-  - [ ] `internal/mcpserver/server.go`: `NewServer` is currently flagged as very high.
+- [x] Reduce cognitive complexity:
+  - [x] `internal/mcpserver/server.go`: `NewServer` is currently flagged as very high.
   - [x] `internal/agent/agent.go`: `(*Agent).Run` is currently flagged as high.
 
 ### Nested branching hotspots
