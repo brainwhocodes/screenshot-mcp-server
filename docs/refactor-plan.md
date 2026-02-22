@@ -208,7 +208,7 @@ Track UI automation feature work in `docs/automation-llm-vision-macos-plan.md`. 
   - [x] `registerWindowTools(...)`
   - [x] `registerInputTools(...)`
   - [x] `registerImageUtilities(...)`
-- [ ] Move request arg structs next to the tool they serve (or into dedicated `types_*.go` files) to reduce cross-file coupling.
+- [x] Move request arg structs next to the tool they serve (or into dedicated `types_*.go` files) to reduce cross-file coupling.
 - [x] Add a lightweight tool registry test that validates all registered tool names are unique.
 
 ### Service boundaries
