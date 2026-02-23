@@ -15,6 +15,7 @@ A Go implementation of an MCP server and client for full-screen screenshots, wit
   - `take_region_screenshot`
   - `take_region_screenshot_png`
   - `click`
+  - `click_screen` (screen coordinates, no window_id)
   - `mouse_move`
   - `mouse_down`
   - `mouse_up`
@@ -142,7 +143,7 @@ Brings a window to the foreground and activates its application.
 | `take_screenshot`, `take_screenshot_png` | ✅ | ✅ | Full-screen screenshot capture via `github.com/kbinani/screenshot` |
 | `screenshot_hash` | ✅ | ✅ | Hashes the full screen; `target: "window"` requires macOS window tools |
 | `list_windows`, `focus_window`, `take_window_screenshot*` | ✅ | ❌ | Window automation requires macOS APIs (not registered on other OSes) |
-| input + wait tools (`click`, `press_key`, `wait_for_pixel`, etc.) | ✅ | ❌ | Require macOS accessibility APIs (not registered on other OSes) |
+| input + wait tools (`click`, `click_screen`, `press_key`, `wait_for_pixel`, etc.) | ✅ | ❌ | Require macOS accessibility APIs (not registered on other OSes) |
 | app/process helpers (`launch_app`, `quit_app`, etc.) | ✅ | ❌ | macOS-specific commands (not registered on other OSes) |
 | experimental tools (`wait_for_text`, recording, cursor capture, etc.) | ✅ | ❌ | Behind `--experimental`; feature availability depends on host tools (`tesseract`, `screencapture`, `ffmpeg`) |
 
@@ -157,6 +158,10 @@ Captures a specific window and returns image bytes plus metadata for coordinate 
 ### `click`
 
 Performs a mouse click at specified pixel coordinates within a window.
+
+### `click_screen`
+
+Performs a mouse click at absolute screen coordinates (default `coord_space: "points"`; set `coord_space: "pixels"` for raw pixel inputs).
 
 ### `press_key`
 
