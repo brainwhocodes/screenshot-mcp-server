@@ -32,6 +32,7 @@ func registerWindowTools(server *sdkmcp.Server, windowService WindowService) {
 	registerTakeRegionScreenshotTool(server, windowService)
 	registerTakeRegionScreenshotPNGTool(server, windowService)
 	registerClickTool(server, windowService)
+	registerClickScreenTool(server, windowService)
 	registerMouseMoveTool(server, windowService)
 	registerMouseButtonTool(server, MouseDownToolName, MouseDownToolDescription, "down", windowService.MouseDown, windowService)
 	registerMouseButtonTool(server, MouseUpToolName, MouseUpToolDescription, "up", windowService.MouseUp, windowService)
@@ -331,6 +332,31 @@ func registerClickTool(server *sdkmcp.Server, windowService WindowService) {
 			return nil, nil, fmt.Errorf("click: %w", err)
 		}
 		return tools.ToolResultFromText(fmt.Sprintf("Clicked at (%.0f, %.0f) in window %d", args.X, args.Y, args.WindowID)), nil, nil
+	})
+}
+
+func registerClickScreenTool(server *sdkmcp.Server, windowService WindowService) {
+	sdkmcp.AddTool(server, &sdkmcp.Tool{
+		Name:        ClickScreenToolName,
+		Description: ClickScreenToolDescription,
+	}, func(ctx context.Context, _ *sdkmcp.CallToolRequest, args clickScreenArgs) (*sdkmcp.CallToolResult, any, error) {
+		if err := ensureWindowPermissions(windowService, ClickScreenToolName); err != nil {
+			return nil, nil, err
+		}
+		if args.Button == "" {
+			args.Button = "left"
+		}
+		if args.Clicks <= 0 {
+			args.Clicks = 1
+		}
+		coordSpace, err := normalizeCoordSpace(args.CoordSpace)
+		if err != nil {
+			return nil, nil, err
+		}
+		if err := windowService.ClickAt(ctx, args.X, args.Y, args.Button, args.Clicks, coordSpace); err != nil {
+			return nil, nil, fmt.Errorf("click_screen: %w", err)
+		}
+		return tools.ToolResultFromText(fmt.Sprintf("Clicked at (%.0f, %.0f) on screen", args.X, args.Y)), nil, nil
 	})
 }
 

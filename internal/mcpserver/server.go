@@ -50,6 +50,10 @@ const (
 	ClickToolName        = "click"
 	ClickToolDescription = "Click at specific coordinates within a window"
 
+	// ClickScreenToolName performs mouse clicks by screen coordinates
+	ClickScreenToolName        = "click_screen"
+	ClickScreenToolDescription = "Click at screen coordinates without a window context"
+
 	// PressKeyToolName sends key presses to the active application
 	PressKeyToolName        = "press_key"
 	PressKeyToolDescription = "Send a key press to the focused application window"

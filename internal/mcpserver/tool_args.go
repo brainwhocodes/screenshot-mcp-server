@@ -58,6 +58,14 @@ type clickArgs struct {
 	Clicks   int     `json:"clicks,omitempty"`
 }
 
+type clickScreenArgs struct {
+	X          float64 `json:"x"`
+	Y          float64 `json:"y"`
+	Button     string  `json:"button,omitempty"`
+	Clicks     int     `json:"clicks,omitempty"`
+	CoordSpace string  `json:"coord_space,omitempty"`
+}
+
 type dragArgs struct {
 	WindowID uint32  `json:"window_id"`
 	FromX    float64 `json:"from_x"`

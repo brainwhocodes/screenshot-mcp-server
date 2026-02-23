@@ -22,6 +22,7 @@ type WindowService interface {
 	TakeRegionScreenshot(context.Context, float64, float64, float64, float64, string, imgencode.Options) ([]byte, *window.RegionMetadata, error)
 	TakeRegionScreenshotPNG(context.Context, float64, float64, float64, float64, string) ([]byte, *window.RegionMetadata, error)
 	Click(context.Context, uint32, float64, float64, string, int) error
+	ClickAt(context.Context, float64, float64, string, int, string) error
 	MouseMove(context.Context, uint32, float64, float64) error
 	MouseDown(context.Context, uint32, float64, float64, string) error
 	MouseUp(context.Context, uint32, float64, float64, string) error
@@ -109,6 +110,13 @@ func (defaultWindowService) TakeRegionScreenshotPNG(ctx context.Context, x, y, w
 func (defaultWindowService) Click(ctx context.Context, windowID uint32, x, y float64, button string, clicks int) error {
 	if err := window.Click(ctx, windowID, x, y, button, clicks); err != nil {
 		return wrapWindowServiceError("click", err)
+	}
+	return nil
+}
+
+func (defaultWindowService) ClickAt(ctx context.Context, x, y float64, button string, clicks int, coordSpace string) error {
+	if err := window.ClickAt(ctx, x, y, button, clicks, coordSpace); err != nil {
+		return wrapWindowServiceError("click_at", err)
 	}
 	return nil
 }

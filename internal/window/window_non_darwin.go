@@ -112,6 +112,11 @@ func Click(context.Context, uint32, float64, float64, string, int) error {
 	return fmt.Errorf("%w", unsupportedPlatformError("click"))
 }
 
+// ClickAt returns an unsupported error on non-Darwin.
+func ClickAt(context.Context, float64, float64, string, int, string) error {
+	return fmt.Errorf("%w", unsupportedPlatformError("click_at"))
+}
+
 // MouseMove returns an unsupported error on non-Darwin.
 func MouseMove(context.Context, uint32, float64, float64) error {
 	return fmt.Errorf("%w", unsupportedPlatformError("mouse_move"))

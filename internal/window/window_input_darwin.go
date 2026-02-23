@@ -29,6 +29,22 @@ func MouseDown(ctx context.Context, windowID uint32, x, y float64, button string
 	})
 }
 
+// ClickAt performs a mouse click at screen coordinates.
+func ClickAt(ctx context.Context, x, y float64, button string, clicks int, coordSpace string) error {
+	pointX, pointY, err := mapScreenPoint(ctx, x, y, coordSpace)
+	if err != nil {
+		return err
+	}
+
+	if clicks <= 0 {
+		clicks = 1
+	}
+
+	btn := buttonToInt(button)
+	postMouseClickEvent(pointX, pointY, btn, clicks)
+	return nil
+}
+
 // MouseUp sends a mouse up event at the specified coordinates.
 func MouseUp(ctx context.Context, windowID uint32, x, y float64, button string) error {
 	return postMouseButton(ctx, windowID, x, y, button, func(xPt, yPt float64, btn int) {
@@ -106,6 +122,21 @@ func mapWindowInputPoint(ctx context.Context, windowID uint32, x, y float64) (*W
 	yPt := targetWindow.Bounds.Y + (y / metadata.Scale)
 
 	return targetWindow, metadata, xPt, yPt, nil
+}
+
+func mapScreenPoint(_ context.Context, x, y float64, coordSpace string) (float64, float64, error) {
+	if coordSpace == "" || coordSpace == "points" {
+		return x, y, nil
+	}
+	if coordSpace != "pixels" {
+		return 0, 0, fmt.Errorf("coord_space must be 'points' or 'pixels', got %q", coordSpace)
+	}
+
+	scale := scaleAtPoint(x, y)
+	if scale <= 0 {
+		scale = 1.0
+	}
+	return x / scale, y / scale, nil
 }
 
 func mapWindowDragPoints(
